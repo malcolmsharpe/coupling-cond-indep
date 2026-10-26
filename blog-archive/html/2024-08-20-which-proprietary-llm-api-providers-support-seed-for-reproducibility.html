@@ -1,0 +1,44 @@
+
+<p class="wp-block-paragraph">For uses such as evaluation, it can be useful to get reproducible outputs from an LLM. When generating with a non-zero temperature, one must specify a seed to achieve reproducible outputs. This is always an option when self-hosting an open LLM, but, for proprietary LLMs, some providers don&#8217;t offer a seed parameter. (My interest is that APOC improves the coupling obtained by using a shared seed, which makes APOC mainly appealing to users already using seeds.)</p>
+
+
+
+<p class="wp-block-paragraph">This post lists which proprietary LLM API providers support specifying a seed for generation. I produced this list by searching their documentation, so oversights are possible. Also, I have not tried using most of these APIs, which leaves open the question of whether the seed parameter is effective. (For example, OpenAI&#8217;s seed parameter is well-known to not ensure fully deterministic outputs.)</p>
+
+
+
+<ul class="wp-block-list">
+<li>OpenAI: <a href="https://platform.openai.com/docs/advanced-usage/reproducible-outputs">supported</a></li>
+
+
+
+<li>Google Gemini: not supported</li>
+
+
+
+<li>Anthropic: not supported</li>
+
+
+
+<li>Mistral: <a href="https://docs.mistral.ai/api/#tag/chat/operation/chat_completion_v1_chat_completions_post">supported</a></li>
+
+
+
+<li>01.AI: not supported</li>
+
+
+
+<li>Reka: <a href="https://docs.reka.ai/api-reference/chat/create#request.body.seed">supported</a></li>
+
+
+
+<li>DeepSeek: not supported</li>
+
+
+
+<li>Cohere: <a href="https://docs.cohere.com/docs/predictable-outputs#seed">supported</a></li>
+
+
+
+<li>Qwen: <a href="https://www.alibabacloud.com/help/en/model-studio/developer-reference/use-qwen-by-calling-api#f7cf331c06b49">supported</a></li>
+</ul>

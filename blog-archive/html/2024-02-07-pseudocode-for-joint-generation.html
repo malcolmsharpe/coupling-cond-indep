@@ -1,0 +1,58 @@
+
+<p class="wp-block-paragraph">Here is simple pseudocode for <a href="https://masharpe.wordpress.com/2024/02/03/method-for-comparing-creative-writing-models-more-easily-inspired-by-speculative-sampling/">my post about a method for more easily comparing non-deterministic responses from different models, quants, prompts, samplers, etc. </a>For simplicity, it uses only two models and no rejoining heuristic (such as rejoining on newlines, periods, or spaces).</p>
+
+
+
+<p class="wp-block-paragraph">Notice that it&#8217;s conceptually very similar to speculative sampling. Unlike spec samp, we continue joint generation even after resampling occurs.</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+def choose_token(weights):
+    # Randomly choose a token according to the (possibly unnormalized) weights
+    ...
+
+def reuse_sample(distr_draft, token_draft, distr_target):
+    prob_draft = distr_draft&#91;token_draft]
+    prob_target = distr_target&#91;token_target]
+
+    if random() * prob_draft &lt; prob_target:
+        return token_draft
+
+    weights_excess = max{0, distr_target - distr_draft}
+    return choose_token(weights_excess)
+
+# Sample a response from the draft model
+model_draft = ... # load draft model
+distrs_draft = &#91;]
+tokens_draft = &#91;]
+
+do:
+    distr_draft = model_draft(tokens_draft)
+    token_draft = choose_token(distr_draft)
+
+    distrs_draft.append(distr_draft)
+    tokens_draft.append(token_draft)
+while token_draft != EOS
+
+unload(model_draft) # optionally unload draft model, to save VRAM
+
+# Sample a response from the target model, reusing tokens when possible
+model_target = ... # load target model
+tokens_target = &#91;]
+
+i = 0
+do:
+    distr_target = model_target(tokens_target)
+    if i &lt; len(tokens_draft):
+        token_target = reuse_sample(distrs_draft&#91;i], tokens_draft&#91;i], distr_target)
+    else:
+        token_target = choose_token(distr_target)
+
+    tokens_target.apppend(token_target)
+
+    i += 1
+while token_target != EOS
+
+print(decode(tokens_draft))
+print(decode(tokens_target))
+</pre></div>

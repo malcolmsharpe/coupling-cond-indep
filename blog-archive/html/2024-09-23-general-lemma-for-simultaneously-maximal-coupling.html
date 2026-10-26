@@ -1,0 +1,56 @@
+
+<p class="wp-block-paragraph">In <a href="https://masharpe.wordpress.com/2024/09/22/key-lemma-for-ncfoc/">my previous post</a>, I presented a lemma that allows proving NCFOC by constructing a maximal coupling that preserves two smaller pre-existing maximal couplings. To generalize to simultaneously maximal couplings in Bayesian networks (SMCBN), I needed another easier lemma, and, while thinking how to prove it, I realized that I could generalize both lemmas considerably with a unified proof. That generalized lemma is presented in this post.</p>
+
+
+
+<p class="wp-block-paragraph"><strong>Lemma.</strong> Take random variables X1, …, Xn, Y1, …, Yn. There exists a maximal coupling <code>P*</code> of X and Y such that, for every <code>S subset of [n]</code> for which X_S and Y_S were maximally coupled, <code>P*</code> preserves the marginal distribution of <code>(X_S, Y_S)</code>.</p>
+
+
+
+<p class="wp-block-paragraph"><strong>Proof.</strong> Use an LP:</p>
+
+
+
+<ul class="wp-block-list">
+<li>The feasible solutions are the probability vectors that are couplings of X and Y and preserve the specified marginals.</li>
+
+
+
+<li>The objective is to maximize <code>P[X = Y]</code>.</li>
+</ul>
+
+
+
+<p class="wp-block-paragraph">The original joint distribution is a feasible solution of the LP, and, since the feasible solutions are probability vectors, the LP is bounded. Since the LP is feasible and bounded, it has an optimal solution <code>P*</code>.</p>
+
+
+
+<p class="wp-block-paragraph">We only need show that <code>P*</code> is a maximal coupling of X and Y.</p>
+
+
+
+<p class="wp-block-paragraph">Suppose otherwise. Then there exist a,b,c such that b != a, c != a, <code>p*(a,b) &gt; 0</code>, <code>p*(c,a) &gt; 0</code>. Let <code>delta = min{ p*(a,b), p*(c,a) }</code> and set <code>ptilde = p* + delta (e_{aa} + e_{cb} - e_{ab} - e_{ca})</code>. Observe that ptilde is still a valid coupling and has <code>Ptilde[X = Y] = delta + P*[X = Y]</code>.</p>
+
+
+
+<p class="wp-block-paragraph"><strong>Claim.</strong> For every <code>S subset of [n]</code> for which X_S and Y_S were maximally coupled, ptilde preserves the marginal distribution of <code>(X_S, Y_S)</code>.</p>
+
+
+
+<p class="wp-block-paragraph">Proving this claim will show that ptilde is a feasible solution to the LP with greater objective value than <code>P*</code>, a contradiction, which will complete the proof of the lemma.</p>
+
+
+
+<p class="wp-block-paragraph"><strong>Proof of claim.</strong> Since <code>p*(a_S, b_S) &gt;= p*(a, b) &gt; 0</code> and <code>p*(c_S, a_S) &gt;= p*(c, a) &gt; 0</code>, we have at least one of a_S = b_S or a_S = c_S. Without loss of generality, a_S = c_S.</p>
+
+
+
+<p class="wp-block-paragraph">Then delta mass was moved from <code>(a_S, b_S)</code> and <code>(c_S, a_S) = (a_S, a_S)</code> to <code>(a_S, a_S)</code> and <code>(c_S, b_S) = (a_S, b_S)</code>, which is no change. <strong>[]</strong></p>
+
+
+
+<h1 class="wp-block-heading">Discussion</h1>
+
+
+
+<p class="wp-block-paragraph">If you can tolerate dealing with the entire joint distribution, this lemma gives a construction for the maximal coupling: either solve the LP or repeatedly apply the exchange move. But in practice, it&#8217;s computationally impractical to manipulate the entire joint distribution, so efficient sampling remains for future work.</p>

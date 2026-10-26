@@ -1,0 +1,128 @@
+
+<p class="wp-block-paragraph">In the testing and evaluation of APOC against baselines, a key visualization is the <a href="https://masharpe.wordpress.com/2024/06/04/apoc-will-substantially-outperform-ptc-on-nf8-quant-preliminary-experiment/">longest-common-prefix survival function</a>. Though I&#8217;ve discussed it before on this blog, there is a tricky issue that I neglected and was leading to unsatisfactory visualizations. I recently noticed an unexpected solution using the Kaplan-Meier survival function estimator.</p>
+
+
+
+<p class="wp-block-paragraph">The particular issue with LCP SFs is how to handle response pairs that terminate with equality (because they sampled EOS together). I&#8217;ll discuss my initial ideas before showing how KM yields a superior solution.</p>
+
+
+
+<h1 class="wp-block-heading">Equal-response LCP treated as infinite</h1>
+
+
+
+<p class="wp-block-paragraph">The first idea is to imagine that, after a response samples EOS once, it samples EOS forever. In that case, response pairs that sample EOS together would forever be equal, making the LCP infinite. That idea produces the following plot:</p>
+
+
+
+<figure class="wp-block-image size-large"><a href="https://masharpe.wordpress.com/wp-content/uploads/2024/07/eqlcpinf_sfs.png"><img data-attachment-id="2170" data-permalink="https://masharpe.wordpress.com/2024/07/16/kaplan-meier-for-lcp-sfs/eqlcpinf_sfs/" data-orig-file="https://masharpe.wordpress.com/wp-content/uploads/2024/07/eqlcpinf_sfs.png" data-orig-size="567,455" data-comments-opened="1" data-image-title="eqlcpinf_sfs" data-image-description="" data-image-caption="" data-large-file="https://masharpe.wordpress.com/wp-content/uploads/2024/07/eqlcpinf_sfs.png?w=567" loading="lazy" width="567" height="455" src="https://masharpe.wordpress.com/wp-content/uploads/2024/07/eqlcpinf_sfs.png?w=567" alt="" class="wp-image-2170" srcset="https://masharpe.wordpress.com/wp-content/uploads/2024/07/eqlcpinf_sfs.png 567w, https://masharpe.wordpress.com/wp-content/uploads/2024/07/eqlcpinf_sfs.png?w=150 150w, https://masharpe.wordpress.com/wp-content/uploads/2024/07/eqlcpinf_sfs.png?w=300 300w" sizes="auto, (max-width: 567px) 100vw, 567px" /></a></figure>
+
+
+
+<p class="wp-block-paragraph">The eye immediately notices the nonzero right asymptote. It has a useful interpretation: it is the probability that a response pair is equal. For APOC, that gives one minus the whole-response TVD.</p>
+
+
+
+<p class="wp-block-paragraph">Despite that meaningful interpretation, having a nonzero right asymptote causes problems.</p>
+
+
+
+<p class="wp-block-paragraph">First, it overstates the effectiveness of the weak baseline CRN. CRN is not creating a non-negligible number of pairs with LCPs longer than 80 tokens, but you wouldn&#8217;t know it from this chart, because the right asymptote is buoyed by short equal pairs.</p>
+
+
+
+<p class="wp-block-paragraph">Second, look at what it does to the negative log survival plot:</p>
+
+
+
+<figure class="wp-block-image size-large"><a href="https://masharpe.wordpress.com/wp-content/uploads/2024/07/eqlcpinf_neglog_sfs.png"><img data-attachment-id="2171" data-permalink="https://masharpe.wordpress.com/2024/07/16/kaplan-meier-for-lcp-sfs/eqlcpinf_neglog_sfs/" data-orig-file="https://masharpe.wordpress.com/wp-content/uploads/2024/07/eqlcpinf_neglog_sfs.png" data-orig-size="567,455" data-comments-opened="1" data-image-title="eqlcpinf_neglog_sfs" data-image-description="" data-image-caption="" data-large-file="https://masharpe.wordpress.com/wp-content/uploads/2024/07/eqlcpinf_neglog_sfs.png?w=567" loading="lazy" width="567" height="455" src="https://masharpe.wordpress.com/wp-content/uploads/2024/07/eqlcpinf_neglog_sfs.png?w=567" alt="" class="wp-image-2171" srcset="https://masharpe.wordpress.com/wp-content/uploads/2024/07/eqlcpinf_neglog_sfs.png 567w, https://masharpe.wordpress.com/wp-content/uploads/2024/07/eqlcpinf_neglog_sfs.png?w=150 150w, https://masharpe.wordpress.com/wp-content/uploads/2024/07/eqlcpinf_neglog_sfs.png?w=300 300w" sizes="auto, (max-width: 567px) 100vw, 567px" /></a></figure>
+
+
+
+<p class="wp-block-paragraph">The nonzero right asymptote causes the curves to bend to the right. For negative log to be effective, the asymptote needs to be zero.</p>
+
+
+
+<p class="wp-block-paragraph">The more severe of these two problems is overrating the weak baseline, but it would also be nice to have a meaningful negative log survival plot.</p>
+
+
+
+<h1 class="wp-block-heading">Equal-response LCP treated as the response length</h1>
+
+
+
+<p class="wp-block-paragraph">To achieve a zero right asymptote, a natural idea is, when the responses are equal, define their LCP to be equal to their length. As long as every response eventually terminates, that ensures a zero right asymptote. That idea produces the following plot:</p>
+
+
+
+<figure class="wp-block-image size-large"><a href="https://masharpe.wordpress.com/wp-content/uploads/2024/07/eqlcplen_sfs.png"><img data-attachment-id="2173" data-permalink="https://masharpe.wordpress.com/2024/07/16/kaplan-meier-for-lcp-sfs/eqlcplen_sfs/" data-orig-file="https://masharpe.wordpress.com/wp-content/uploads/2024/07/eqlcplen_sfs.png" data-orig-size="567,455" data-comments-opened="1" data-image-title="eqlcplen_sfs" data-image-description="" data-image-caption="" data-large-file="https://masharpe.wordpress.com/wp-content/uploads/2024/07/eqlcplen_sfs.png?w=567" loading="lazy" width="567" height="455" src="https://masharpe.wordpress.com/wp-content/uploads/2024/07/eqlcplen_sfs.png?w=567" alt="" class="wp-image-2173" srcset="https://masharpe.wordpress.com/wp-content/uploads/2024/07/eqlcplen_sfs.png 567w, https://masharpe.wordpress.com/wp-content/uploads/2024/07/eqlcplen_sfs.png?w=150 150w, https://masharpe.wordpress.com/wp-content/uploads/2024/07/eqlcplen_sfs.png?w=300 300w" sizes="auto, (max-width: 567px) 100vw, 567px" /></a></figure>
+
+
+
+<p class="wp-block-paragraph">Now the right asymptote is zero, but there&#8217;s a new issue subtly lurking. This plot underrates all coupling methods, with the underrating being greater the more effective they are. Even if a model is coupled to itself so that every response pair is equal, the curve becomes the response length SF, and still rapidly drops to zero as responses terminate.</p>
+
+
+
+<p class="wp-block-paragraph">It seems more fair if, in the special case when every response pair is equal, the curve never decreases.</p>
+
+
+
+<h1 class="wp-block-heading">Kaplan-Meier</h1>
+
+
+
+<p class="wp-block-paragraph">To recap, we want to define the LCP SF so that:</p>
+
+
+
+<ul class="wp-block-list">
+<li>When the models aren&#8217;t equal, the right asymptote is (typically) zero.</li>
+
+
+
+<li>When the models are equal and optimally coupled, the curve never decreases.</li>
+</ul>
+
+
+
+<p class="wp-block-paragraph">The <a href="https://en.wikipedia.org/wiki/Kaplan%E2%80%93Meier_estimator">Kaplan-Meier survival function estimator</a> offers a solution. It uses the concept of &#8220;right-censoring&#8221;. A living subject is right-censored if further information becomes unavailable beyond a certain time. They presumably die sometime later, but we don&#8217;t know when.</p>
+
+
+
+<p class="wp-block-paragraph">To apply KM to the LCP SF, for response pairs that terminate with equality, we model them as being right-censored. It&#8217;s as if the model continued on with writing future responses (perhaps to user follow-ups) that we don&#8217;t have access to. The idea produces this plot:</p>
+
+
+
+<figure class="wp-block-image size-large"><a href="https://masharpe.wordpress.com/wp-content/uploads/2024/07/km_sfs.png"><img data-attachment-id="2174" data-permalink="https://masharpe.wordpress.com/2024/07/16/kaplan-meier-for-lcp-sfs/km_sfs/" data-orig-file="https://masharpe.wordpress.com/wp-content/uploads/2024/07/km_sfs.png" data-orig-size="567,455" data-comments-opened="1" data-image-title="km_sfs" data-image-description="" data-image-caption="" data-large-file="https://masharpe.wordpress.com/wp-content/uploads/2024/07/km_sfs.png?w=567" loading="lazy" width="567" height="455" src="https://masharpe.wordpress.com/wp-content/uploads/2024/07/km_sfs.png?w=567" alt="" class="wp-image-2174" srcset="https://masharpe.wordpress.com/wp-content/uploads/2024/07/km_sfs.png 567w, https://masharpe.wordpress.com/wp-content/uploads/2024/07/km_sfs.png?w=150 150w, https://masharpe.wordpress.com/wp-content/uploads/2024/07/km_sfs.png?w=300 300w" sizes="auto, (max-width: 567px) 100vw, 567px" /></a></figure>
+
+
+
+<p class="wp-block-paragraph">As we wanted, the right asymptote is zero (although APOC is so strong that we&#8217;d need longer responses for its curve to approach zero). KM also satisfies our second criterion, since, by definition, its curve only decreases when a death event occurs, and optimally coupled equal models would never have a death event.</p>
+
+
+
+<p class="wp-block-paragraph">Happily, this plot is the best so far at showing the strength of APOC against the weak baseline CRN. While in general it&#8217;s suspect to cherry-pick the plots that are kindest to my favored algorithm, in this case, creating a clear visual separation between coupling methods is the point. (A non-cherry-picked plot likely wouldn&#8217;t use LCP as its metric!)</p>
+
+
+
+<p class="wp-block-paragraph">Finally, we get a more pleasing negative log survival plot:</p>
+
+
+
+<figure class="wp-block-image size-large"><a href="https://masharpe.wordpress.com/wp-content/uploads/2024/07/neglog_km_sfs.png"><img data-attachment-id="2175" data-permalink="https://masharpe.wordpress.com/2024/07/16/kaplan-meier-for-lcp-sfs/neglog_km_sfs/" data-orig-file="https://masharpe.wordpress.com/wp-content/uploads/2024/07/neglog_km_sfs.png" data-orig-size="567,455" data-comments-opened="1" data-image-title="neglog_km_sfs" data-image-description="" data-image-caption="" data-large-file="https://masharpe.wordpress.com/wp-content/uploads/2024/07/neglog_km_sfs.png?w=567" loading="lazy" width="567" height="455" src="https://masharpe.wordpress.com/wp-content/uploads/2024/07/neglog_km_sfs.png?w=567" alt="" class="wp-image-2175" srcset="https://masharpe.wordpress.com/wp-content/uploads/2024/07/neglog_km_sfs.png 567w, https://masharpe.wordpress.com/wp-content/uploads/2024/07/neglog_km_sfs.png?w=150 150w, https://masharpe.wordpress.com/wp-content/uploads/2024/07/neglog_km_sfs.png?w=300 300w" sizes="auto, (max-width: 567px) 100vw, 567px" /></a></figure>
+
+
+
+<h1 class="wp-block-heading">Discussion</h1>
+
+
+
+<p class="wp-block-paragraph">There&#8217;s a subtle difference here from standard uses of KM. Usually, there is some survival function of natural interest, and KM is a way to estimate it. In the case of the LCP SF, though, it&#8217;s not obvious what&#8217;s the best way to define it, and each of the plots reflects a different definition. The KM formula becomes the definition of the SF itself, not just an estimator.</p>
+
+
+
+<p class="wp-block-paragraph">The choice of how to define the LCP SF also impacts the calculation of the mean LCP. The mean LCP is simply the definite integral of the SF. Thus, changing the SF definition changes the mean too.</p>
+
+
+
+<p class="wp-block-paragraph">In the future, I&#8217;ll definitely reach for KM whenever visualizing failure times within trials of varying lengths.</p>

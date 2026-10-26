@@ -1,0 +1,120 @@
+
+<p class="wp-block-paragraph">In my previous posts, I presented the <a href="https://masharpe.wordpress.com/2024/10/01/key-subroutine-for-simultaneously-maximal-coupling/">maximal recoupling algorithm</a> and <a href="https://masharpe.wordpress.com/2024/10/02/details-of-maximal-recouplings-effect-on-subcouplings/">detailed its conjectured properties</a>. Today&#8217;s post presents progress towards proving the properties. The properties and their status:</p>
+
+
+
+<ul class="wp-block-list">
+<li>Coupling validity:
+<ul class="wp-block-list">
+<li>Marginal of X: obvious.</li>
+
+
+
+<li>Marginal of Y: today.</li>
+</ul>
+</li>
+
+
+
+<li>Coupling maximality: obvious.</li>
+
+
+
+<li>Termination: today.</li>
+
+
+
+<li>Efficiency: todo.</li>
+
+
+
+<li>Effect on subcouplings: todo.</li>
+</ul>
+
+
+
+<h1 class="wp-block-heading">Marginal of Y</h1>
+
+
+
+<p class="wp-block-paragraph">We must prove that the maximal recoupling algorithm preserves the marginal distribution of Y. We&#8217;ll use a symmetry approach: we&#8217;ll show that running MRC on (X,Y) and (Y,X) yield the same coupling, so, since the marginal distribution of X is obviously preserved, the marginal distribution of Y is preserved too.</p>
+
+
+
+<p class="wp-block-paragraph">The case where MRC returns equal values is obvious, so we only need analyze the loop. When MRC returns <code>(b_1, b_{k+1})</code>, we&#8217;ll say that its <em>trajectory</em> was <code>b_1, b_2, ..., b_{k+1}</code>. We will calculate the probability of a given trajectory per execution of MRC (which includes the case where the loop isn&#8217;t entered, so the sum of the probabilities can be less than 1).</p>
+
+
+
+<p class="wp-block-paragraph">First, note that if there is any <code>2 &lt;= i &lt;= k</code> such that <code>P[X = b_i] = 0</code> or <code>P[Y = b_i] = 0</code>, the probability of the trajectory is zero. Otherwise, its probability is given by</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+max{0, P&#91;X = b_1] - P&#91;Y = b_1]}
+    * Prod_{i=1}^k P&#91;Y = b_{i=1} | X = b_i]
+    * Prod_{i=1}^{k-1} min{1, P&#91;X = b_{i+1}] / P&#91;Y = b_{i=1}]}
+    * max{0, 1 - (P&#91;X = b_{i+1}] / P&#91;Y = b_{i+1}])}
+
+= max{0, 1 - P&#91;Y = b_1] / P&#91;X = b_1]}
+    * Prod_{i=1}^k P&#91;Y = b_{i=1}, X = b_i]
+    * Prod_{i=2}^k min{ 1 / P&#91;X = b_i], 1 / P&#91;Y = b_i] }
+    * max{0, 1 - P&#91;X = b_{k+1}] / P&#91;Y = b_{k+1}]}
+</pre></div>
+
+
+<p class="wp-block-paragraph">From this expression, it&#8217;s clear that it&#8217;s the same as the probability of the reverse trajectory <code>b_{k+1}, ..., b_1</code> when MRC is applied to (Y,X) instead, which proves the symmetry.</p>
+
+
+
+<h1 class="wp-block-heading">Termination</h1>
+
+
+
+<p class="wp-block-paragraph">To show termination, we&#8217;d like to analyze the trajectory <code>b_1, ..., b_{k+1}</code> as a Markov chain and show that it&#8217;s absorbing. However the transition probabilities implied by the loop don&#8217;t necessarily define an absorbing Markov chain: a simple example is if X and Y both are constant with the same value. Instead, we&#8217;ll show that, with probability 1, the initial state b_1 can only reach states that themselves can reach absorbing states.</p>
+
+
+
+<p class="wp-block-paragraph">To do that, consider a directed graph <code>G = (V,A)</code> where V is the (finite) set of values taken by X and Y and A consists of those arcs <code>i,j</code> for which the flow <code>w_{ij} = P[X = i, Y = j]</code> is nonzero. We&#8217;ll say <code>i in V</code> is</p>
+
+
+
+<ul class="wp-block-list">
+<li>A <em>source</em> if <code>sum_j w_{ij} &gt; sum_j w_{ji}</code>. i.e. <code>P[X = i] &gt; P[Y = i]</code>.</li>
+
+
+
+<li>A <em>sink</em> if <code>sum_j w_{ij} &lt; sum_j w_{ji}</code>. i.e. <code>P[X = i] &lt; P[Y = i]</code>.</li>
+</ul>
+
+
+
+<p class="wp-block-paragraph">Observe that the MRC loop takes a random walk in G, starting at a source and ending at a sink. It&#8217;s enough to show that for every source i and every node j reachable from i, there exists a sink k reachable from j.</p>
+
+
+
+<p class="wp-block-paragraph">Suppose otherwise: take a source i and node j reachable from i such that there is no sink reachable from j. Let J be the set of nodes reachable from j, including j itself. Then:</p>
+
+
+
+<ul class="wp-block-list">
+<li>J has no out-arcs, so its net outflow is non-positive.</li>
+
+
+
+<li>J has no sinks, so its net inflow is non-positive.</li>
+
+
+
+<li>Thus, J has zero net flow.</li>
+
+
+
+<li>Since J has zero net flow and no sinks, it has no sources, so <code>i not in J</code>.</li>
+
+
+
+<li>Since J has no out-arcs and zero net flow, J has no in-arcs.</li>
+
+
+
+<li>But then <code>i not in J</code> has no directed path to <code>j in J</code>, a contradiction.</li>
+</ul>

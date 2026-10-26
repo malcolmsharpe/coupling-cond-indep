@@ -1,0 +1,170 @@
+
+<p class="wp-block-paragraph">I&#8217;d like to present APOC in a useful way. Since APOC is an optimal method for coupling LLM responses, it&#8217;s an easy sell to users who already couple LLM responses using a fixed seed: APOC can be used in many of the same use cases for improved results.</p>
+
+
+
+<p class="wp-block-paragraph">What&#8217;s surprising is how rare it is to use a fixed seed to couple LLM responses:</p>
+
+
+
+<ul class="wp-block-list">
+<li>Searching the web reveals very little discussion of the technique in any context. (By contrast, fixed seeds are commonly discussed for image generation with Stable Diffusion.)</li>
+
+
+
+<li><a href="https://152334h.github.io/blog/non-determinism-in-gpt-4/">OpenAI&#8217;s seed parameter doesn&#8217;t ensure responses are fully deterministic</a>.</li>
+
+
+
+<li>Anthropic doesn&#8217;t offer a seed parameter, and neither do any of the providers hosting Llama 3.1 405B. (I checked together.ai, Hyperbolic, Fireworks AI, Lepton AI, deepinfra, OctoAI, and NovitaAI.)</li>
+</ul>
+
+
+
+<p class="wp-block-paragraph">This post will argue that the current non-use of coupling is likely a mistake: there are many applications where coupling LLM responses should be beneficial, whether that&#8217;s with a fixed seed or a more advanced method such as APOC. (For this discussion, I&#8217;ll only list applications of coupling to make responses similar, although <a href="https://masharpe.wordpress.com/2024/05/03/sampling-diverse-llm-responses-via-generalized-sampling-without-replacement/">there are potential applications for making responses dissimilar</a>, too.)</p>
+
+
+
+<h1 class="wp-block-heading">Users that would benefit from coupling LLM responses</h1>
+
+
+
+<h2 class="wp-block-heading">Model users</h2>
+
+
+
+<p class="wp-block-paragraph">Applications:</p>
+
+
+
+<ul class="wp-block-list">
+<li>Pairwise evaluation of different models or quantizations on a task (even, in principle, models with differing tokenizers). <a href="https://github.com/Artefact2/llm-eval/blob/master/generate-answers">Example.</a></li>
+
+
+
+<li>Prompt engineering (for evaluating the effect of prompt tweaks).</li>
+
+
+
+<li>Sampler configuration (e.g. to isolate the effect of temperature).</li>
+
+
+
+<li>Evaluation of control vectors, abliteration, etc.</li>
+</ul>
+
+
+
+<h2 class="wp-block-heading">Model post-trainers</h2>
+
+
+
+<ul class="wp-block-list">
+<li>Mid-training evaluation of fine-tuning (including SFT and DPO).</li>
+
+
+
+<li>Comparison of a pre-finetune model to a post-finetune model.</li>
+</ul>
+
+
+
+<h2 class="wp-block-heading">Inference providers</h2>
+
+
+
+<ul class="wp-block-list">
+<li>Inference latency optimization (i.e. speculative decoding). Note: Unlike the other applications listed here, speculative decoding uses per-token optimal coupling, not fixed-seed coupling, and is already in increasingly common use.</li>
+</ul>
+
+
+
+<h2 class="wp-block-heading">Quantization researchers</h2>
+
+
+
+<ul class="wp-block-list">
+<li>Qualitatively isolate the impact of quantization.</li>
+</ul>
+
+
+
+<h2 class="wp-block-heading">Sampler researchers</h2>
+
+
+
+<ul class="wp-block-list">
+<li>Sampler design (e.g. of new anti-repetition samplers).</li>
+</ul>
+
+
+
+<h2 class="wp-block-heading">Data creators</h2>
+
+
+
+<ul class="wp-block-list">
+<li>Production of pairs for preference labeling.</li>
+</ul>
+
+
+
+<h1 class="wp-block-heading">Benefits from coupling LLM responses</h1>
+
+
+
+<p class="wp-block-paragraph">Now that we&#8217;ve listed some use cases, here are the various benefits they&#8217;d receive:</p>
+
+
+
+<ul class="wp-block-list">
+<li>Reduce the cost of human evaluation of model pairs.
+<ul class="wp-block-list">
+<li>Fewer labels are required (because of variance reduction).</li>
+
+
+
+<li>Each label is easier to assign (because pairs have fewer differences to consider).</li>
+</ul>
+</li>
+
+
+
+<li>Reduce the cost of LLM inference during evaluation.
+<ul class="wp-block-list">
+<li>Fewer generations are required (because of variance reduction).</li>
+
+
+
+<li>Fewer judgings are required (ditto).</li>
+</ul>
+</li>
+
+
+
+<li>Tighten confidence bounds on evaluation metrics (by exploiting the cost reduction to increase sample size).</li>
+
+
+
+<li>Isolate differences in preference pairs (e.g. for more effective DPO data).</li>
+
+
+
+<li>Give insight into the qualitative effect of small changes.</li>
+</ul>
+
+
+
+<h1 class="wp-block-heading">Discussion</h1>
+
+
+
+<p class="wp-block-paragraph">To be truly compelling, the benefits must be quantified. That said, from the user perspective, there&#8217;s little downside to using a fixed seed: it&#8217;s a UX problem (the frontends don&#8217;t make it easy) and a backend problem (seed parameters are often not offered and often don&#8217;t ensure determinism). In image generation, where those problems are already solved, users commonly use fixed seeds.</p>
+
+
+
+<p class="wp-block-paragraph">Over time, as UIs and backends improve, I expect coupling LLM responses to become standard practice for many tasks. These applications will presumably initially use fixed seeds, since that is the most widely-available coupling method available.</p>
+
+
+
+<p class="wp-block-paragraph">Compared to fixed-seed, coupling methods that are specialized to two models (and require logprob interactions), such as PTOC and APOC, create greater difficulty for the UI and backend, so they need to offer compelling improvements over fixed seeds. I expect whether that&#8217;s the case will vary by application.</p>

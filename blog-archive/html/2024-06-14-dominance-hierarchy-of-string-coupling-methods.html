@@ -1,0 +1,104 @@
+
+<p class="wp-block-paragraph">Suppose we have two discrete distributions over the same finite set of strings, with corresponding random variables X and Y. For example, X and Y might be responses from two different quantizations of an LLM.</p>
+
+
+
+<p class="wp-block-paragraph">We&#8217;d like to couple X and Y to maximize similarity. Precisely, we want methods that define a joint distribution <code>P[X=a /\ Y=b]</code> that for every length-i prefix <code>a_{&lt;i}</code> maximizes the probability that X and Y share that prefix: <code>P[X_{&lt;i} = Y_{&lt;i} = a_{&lt;i}]</code>. A method is said to dominate another if for every choice of distributions and prefix <code>a_{&lt;i}</code>, the share-probability is no less. The dominance is strict if there exists a choice of distributions and prefix such that the share-probability inequality is strict.</p>
+
+
+
+<p class="wp-block-paragraph">Here are the methods that we&#8217;ll compare in this post:</p>
+
+
+
+<ul class="wp-block-list">
+<li>PTCRN: Per-token common-random-numbers, a family of methods. This includes ad hoc seed reuse.</li>
+
+
+
+<li>PTOC: Per-token optimal coupling.</li>
+
+
+
+<li>APOC: All-prefix-optimal coupling.</li>
+</ul>
+
+
+
+<p class="wp-block-paragraph">I&#8217;ve described these methods in previous posts, so here we&#8217;ll just compare them. This post collects the facts needed to show PTCRN &lt; PTOC &lt; APOC. i.e. APOC strictly dominates PTOC, which in turn strictly dominates every PTCRN method.</p>
+
+
+
+<h1 class="wp-block-heading">Why study prefix share-probability?</h1>
+
+
+
+<p class="wp-block-paragraph">Domination with respect to prefix share-probability implies:</p>
+
+
+
+<ul class="wp-block-list">
+<li>Domination with respect to whole-response equality probability <code>P[X = Y]</code>.</li>
+
+
+
+<li>Domination with respect to longest-common-prefix survival-function <code>LCP-SF(k) = P[LCP(X,Y) &gt; k]</code>, where LCP is the length of the longest common prefix.</li>
+</ul>
+
+
+
+<p class="wp-block-paragraph">In both cases, the reason is that the probability of interest can be expressed as a sum of the share-probabilities of a prefix-free set of prefixes.</p>
+
+
+
+<p class="wp-block-paragraph">But this still leaves a question of why care about prefixes specifically. There are many practically-relevant string similarity metrics you could imagine using, such as edit distance, that can&#8217;t be expressed using only prefix share-probability. Reasons:</p>
+
+
+
+<ul class="wp-block-list">
+<li>The response coupling method in typical use today, ad hoc seed reuse, will typically not have useful effects other than promoting a long common prefix. (Though, in principle, it could, for example if the response is structured in a way that the token positions align even after the responses differ.) So, methods that dominate ad hoc seed reuse with respect to prefix share-probability are typically going to be better than it in every way.</li>
+
+
+
+<li>It&#8217;s not clear how to directly approach the problem of coupling responses to maximize a complicated metric such as edit distance. One way would be to use prefix-oriented methods as subroutines.</li>
+</ul>
+
+
+
+<p class="wp-block-paragraph">Now let&#8217;s establish the dominance hierarchy.</p>
+
+
+
+<h1 class="wp-block-heading">PTCRN &lt;= PTOC</h1>
+
+
+
+<p class="wp-block-paragraph">See <a href="https://masharpe.wordpress.com/2024/06/06/note-crn-ptc/">this proof</a>.</p>
+
+
+
+<h1 class="wp-block-heading">PTCRN &lt; PTOC</h1>
+
+
+
+<p class="wp-block-paragraph">See <a href="https://masharpe.wordpress.com/2024/06/03/three-discrete-distributions-cant-be-pairwise-optimally-coupled/">this counterexample</a>.</p>
+
+
+
+<p class="wp-block-paragraph">(Note: Since writing that post, I learned of <a href="https://arxiv.org/abs/1903.00632">Angel and Spinka (2019)</a>, in which they give the same counterexample. That preprint is very interesting and deserves a post discussing it.)</p>
+
+
+
+<h1 class="wp-block-heading">PTOC &lt;= APOC</h1>
+
+
+
+<p class="wp-block-paragraph">This is immediate from the fact that APOC is constructed to be optimal for every prefix share-probability. See for example <a href="https://masharpe.wordpress.com/2024/03/05/all-prefix-optimal-coupling-for-model-comparison/">my first post on APOC</a>.</p>
+
+
+
+<h1 class="wp-block-heading">PTOC &lt; APOC</h1>
+
+
+
+<p class="wp-block-paragraph">See <a href="https://masharpe.wordpress.com/2024/02/27/whole-response-coupling-can-outperform-per-token-coupling-an-example/">this counterexample</a>.</p>

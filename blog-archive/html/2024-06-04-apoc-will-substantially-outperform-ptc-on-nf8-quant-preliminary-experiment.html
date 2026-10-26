@@ -1,0 +1,142 @@
+
+<p class="wp-block-paragraph">When having quantized a model, we&#8217;d like to understand the differences introduced compared to the full-precision model. One approach is to generate paired responses, for which I&#8217;ve previously discussed three methods: same-seed (a specific case of Common Random Numbers (CRN)), Per-Token Coupling (PTC), and All-Prefix-Optimal Coupling (APOC).</p>
+
+
+
+<p class="wp-block-paragraph">To compare the effectiveness of the three methods for generating similar responses, one natural plot is the Longest Common Prefix (LCP) survival function (SF). This chart shows, for each possible prefix length <code>L &gt;= 0</code>, the probability that the LCP of the two responses has length at least L.</p>
+
+
+
+<p class="wp-block-paragraph">Theoretically, it can be shown that APOC&#8217;s LCP SF strictly dominates PTC&#8217;s, and PTC&#8217;s LCP SF strictly dominates that of any CRN method (which, in particular, shows that it strictly dominates independent generation too). &#8220;Strictly dominates&#8221; here means: the upper curve is greater-than-or-equal-to the lower curve at every point; and there exist models such that the upper curve has at least point where it is strictly greater than the lower curve. In short:</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+CRN &lt; PTC &lt; APOC
+</pre></div>
+
+
+<p class="wp-block-paragraph">(An important detail of the LCP SF: when the two responses are equal, I treat that as an infinite LCP. As a result, the asymptotic value of the APOC LCP SF is the maximum possible probability that the responses are equal in any coupling. That is equal to one minus the total variation distance (TVD).)</p>
+
+
+
+<p class="wp-block-paragraph">Though the theoretical ordering favors APOC, is the practical gap enough to justify the inconvenience compared to CRN? Theoretical arguments suggest that for sufficiently similar models, APOC outperforms PTC by arbitrarily large amounts, but it&#8217;s not clear whether real models ever are &#8220;sufficiently similar&#8221; in this sense.</p>
+
+
+
+<p class="wp-block-paragraph">To perform an experiment to see how much APOC actually outperforms PTC in practice, it turns out that we don&#8217;t need to implement either method, since the LCP SF curve can be estimated using generated responses with logprobs from both models. (I don&#8217;t describe the estimation technique here.)</p>
+
+
+
+<p class="wp-block-paragraph">This post reports the results of my first preliminary attempt at estimating LCP SFs of APOC and PTC.</p>
+
+
+
+<h1 class="wp-block-heading">Methods</h1>
+
+
+
+<p class="wp-block-paragraph">For this preliminary experiment, I used huggingface transformers, a tiny model (<code>Qwen/Qwen1.5-0.5B-Chat</code>), only one prompt, and 32 responses for that prompt.</p>
+
+
+
+<p class="wp-block-paragraph">I compare the full-precision model&#8217;s generation logits (<code>full:dat</code>) to three models whose logits are computed afterwards by forward pass:</p>
+
+
+
+<ul class="wp-block-list">
+<li><code>full</code>: the full-precision model</li>
+
+
+
+<li><code>nf8</code>: the <code>load_in_8bit</code> bitsandbytes quant</li>
+
+
+
+<li><code>nf4</code>: the <code>load_in_4bit</code> bitsandbytes quant</li>
+</ul>
+
+
+
+<p class="wp-block-paragraph">System prompt:</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+You are a helpful assistant.
+</pre></div>
+
+
+<p class="wp-block-paragraph">User prompt:</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+What color is the sky?
+</pre></div>
+
+
+<h1 class="wp-block-heading">Results</h1>
+
+
+
+<p class="wp-block-paragraph">Response statistics:</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+Average response length = 89.2
+Min response length = 10
+Max response length = 307
+</pre></div>
+
+
+<p class="wp-block-paragraph">These charts show the LCP SFs for each of APOC and PTC:</p>
+
+
+
+<figure class="wp-block-image size-large"><a href="https://masharpe.wordpress.com/wp-content/uploads/2024/06/lcp_sf_full_full.png"><img data-attachment-id="2095" data-permalink="https://masharpe.wordpress.com/2024/06/04/apoc-will-substantially-outperform-ptc-on-nf8-quant-preliminary-experiment/lcp_sf_full_full/" data-orig-file="https://masharpe.wordpress.com/wp-content/uploads/2024/06/lcp_sf_full_full.png" data-orig-size="567,455" data-comments-opened="1" data-image-title="lcp_sf_full_full" data-image-description="" data-image-caption="" data-large-file="https://masharpe.wordpress.com/wp-content/uploads/2024/06/lcp_sf_full_full.png?w=567" loading="lazy" width="567" height="455" src="https://masharpe.wordpress.com/wp-content/uploads/2024/06/lcp_sf_full_full.png?w=567" alt="" class="wp-image-2095" srcset="https://masharpe.wordpress.com/wp-content/uploads/2024/06/lcp_sf_full_full.png 567w, https://masharpe.wordpress.com/wp-content/uploads/2024/06/lcp_sf_full_full.png?w=150 150w, https://masharpe.wordpress.com/wp-content/uploads/2024/06/lcp_sf_full_full.png?w=300 300w" sizes="auto, (max-width: 567px) 100vw, 567px" /></a></figure>
+
+
+
+<figure class="wp-block-image size-large"><a href="https://masharpe.wordpress.com/wp-content/uploads/2024/06/lcp_sf_full_nf8.png"><img data-attachment-id="2096" data-permalink="https://masharpe.wordpress.com/2024/06/04/apoc-will-substantially-outperform-ptc-on-nf8-quant-preliminary-experiment/lcp_sf_full_nf8/" data-orig-file="https://masharpe.wordpress.com/wp-content/uploads/2024/06/lcp_sf_full_nf8.png" data-orig-size="567,455" data-comments-opened="1" data-image-title="lcp_sf_full_nf8" data-image-description="" data-image-caption="" data-large-file="https://masharpe.wordpress.com/wp-content/uploads/2024/06/lcp_sf_full_nf8.png?w=567" loading="lazy" width="567" height="455" src="https://masharpe.wordpress.com/wp-content/uploads/2024/06/lcp_sf_full_nf8.png?w=567" alt="" class="wp-image-2096" srcset="https://masharpe.wordpress.com/wp-content/uploads/2024/06/lcp_sf_full_nf8.png 567w, https://masharpe.wordpress.com/wp-content/uploads/2024/06/lcp_sf_full_nf8.png?w=150 150w, https://masharpe.wordpress.com/wp-content/uploads/2024/06/lcp_sf_full_nf8.png?w=300 300w" sizes="auto, (max-width: 567px) 100vw, 567px" /></a></figure>
+
+
+
+<figure class="wp-block-image size-large"><a href="https://masharpe.wordpress.com/wp-content/uploads/2024/06/lcp_sf_full_nf4.png"><img data-attachment-id="2097" data-permalink="https://masharpe.wordpress.com/2024/06/04/apoc-will-substantially-outperform-ptc-on-nf8-quant-preliminary-experiment/lcp_sf_full_nf4/" data-orig-file="https://masharpe.wordpress.com/wp-content/uploads/2024/06/lcp_sf_full_nf4.png" data-orig-size="567,455" data-comments-opened="1" data-image-title="lcp_sf_full_nf4" data-image-description="" data-image-caption="" data-large-file="https://masharpe.wordpress.com/wp-content/uploads/2024/06/lcp_sf_full_nf4.png?w=567" loading="lazy" width="567" height="455" src="https://masharpe.wordpress.com/wp-content/uploads/2024/06/lcp_sf_full_nf4.png?w=567" alt="" class="wp-image-2097" srcset="https://masharpe.wordpress.com/wp-content/uploads/2024/06/lcp_sf_full_nf4.png 567w, https://masharpe.wordpress.com/wp-content/uploads/2024/06/lcp_sf_full_nf4.png?w=150 150w, https://masharpe.wordpress.com/wp-content/uploads/2024/06/lcp_sf_full_nf4.png?w=300 300w" sizes="auto, (max-width: 567px) 100vw, 567px" /></a></figure>
+
+
+
+<p class="wp-block-paragraph">Here are the asymptotic values:</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+(full:dat || full) accept probabilities:  PTC 52.0% ; APOC 87.1%
+(full:dat || nf8) accept probabilities:  PTC 20.0% ; APOC 66.2%
+(full:dat || nf4) accept probabilities:  PTC 1.0% ; APOC 7.1%
+</pre></div>
+
+
+<p class="wp-block-paragraph">In particular, the whole-response TVD for nf8 is 33.8%.</p>
+
+
+
+<h1 class="wp-block-heading">Discussion</h1>
+
+
+
+<p class="wp-block-paragraph">Observations:</p>
+
+
+
+<ul class="wp-block-list">
+<li><strong>The estimated APOC LCP SF curve is non-monotone.</strong> SFs should be monotone, and the exact curve would be. The non-monotonicity is an artifact of the estimation.</li>
+
+
+
+<li><strong><code>full:dat</code> and <code>full</code> differ significantly.</strong> I believe this is due to floating-point error, though I have not carefully confirmed it. Unfortunately, bfloat16&#8217;s 7-bit fraction means that adjacent values differ by as much as ~0.8%, and that amount of error in logits accumulates to a significant error in whole-response probability. The inference engine seems not to be built to give precisely equal results from a single parallelized forward pass as from the incremental forward passes during generation.</li>
+
+
+
+<li><strong>APOC greatly outperforms PTC on <code>nf8</code>.</strong> This shows that <code>nf8</code> is in a sweet spot where it&#8217;s not too close to <code>full:dat</code> (since the LCP SFs of both PTC and APOC are asymptotically 100% if the models are equal) but also not too far (in which case APOC loses its theoretical advantage over PTC, and additionally both LCP SFs fall rapidly to 0%).</li>
+
+
+
+<li><strong>APOC is still useful for <code>nf4</code>.</strong> Though <code>nf4</code> is different enough from <code>full:dat</code> that neither APOC or PTC perform well, APOC holds on considerably longer.</li>
+</ul>

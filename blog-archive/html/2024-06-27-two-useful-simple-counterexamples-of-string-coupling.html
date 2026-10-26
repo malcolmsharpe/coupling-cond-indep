@@ -1,0 +1,72 @@
+
+<h1 class="wp-block-heading">Biased coinflips</h1>
+
+
+
+<p class="wp-block-paragraph">This example shows PTOC &lt; APOC even if the tokens are independent.</p>
+
+
+
+<p class="wp-block-paragraph">Let the alphabet be <code>{H,T}</code>, let the response length be <code>n=2</code>, and, for every i, let</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+P&#91;X_i = H] = 3/4
+P&#91;Y_i = H] = 1/4
+</pre></div>
+
+
+<p class="wp-block-paragraph">Let <code>X_1</code> and <code>X_2</code> be independent, and let <code>Y_1</code> and <code>Y_2</code> be independent too.</p>
+
+
+
+<p class="wp-block-paragraph">The whole-response distributions are</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+a    P&#91;X=a]  P&#91;Y=a]  min{P&#91;X=a], P&#91;Y=a]}
+HH   9/16    1/16    1/16
+HT   3/16    3/16    3/16
+TH   3/16    3/16    3/16
+TT   1/16    9/16    1/16
+</pre></div>
+
+
+<p class="wp-block-paragraph">With PTOC, each token is optimally coupled to get <code>P[X_i = Y_i] = 1/2</code>, so <code>P[X = Y] = (1/2)^2 = 1/4</code>.</p>
+
+
+
+<p class="wp-block-paragraph">With APOC, however, <code>P[X = Y] = 1/16 + 3/16 + 3/16 + 1/16 = 1/2</code>. Interestingly, for this example, APOC happens to optimally couple the <code>i=1</code> token as well, which is not true in general, since APOC only optimizes prefixes.</p>
+
+
+
+<h1 class="wp-block-heading">Impossibility of simultaneously optimally coupling every position</h1>
+
+
+
+<p class="wp-block-paragraph">Let</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+X ~ Unif({aa, bb})
+Y ~ Unif({ab, ba})
+</pre></div>
+
+
+<p class="wp-block-paragraph">Position 0 can be optimally coupled with equality probability 1, and so can position 1, but this can&#8217;t be done simultaneously. Indeed,</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+P&#91;X_1 = Y_1] = 1 - P&#91;X_2 = Y_2]
+</pre></div>
+
+
+<h1 class="wp-block-heading">Open question</h1>
+
+
+
+<p class="wp-block-paragraph">The second example relied on non-independence of the tokens. If the tokens are independent, it is always possible to simultaneously couple every position using PTOC, but this may not optimally couple the whole response, as seen in the first example.</p>
+
+
+
+<p class="wp-block-paragraph">The open question: if the tokens are independent, is it always possible to simultaneously couple <em>both</em> the whole response <em>and</em> every token position?</p>

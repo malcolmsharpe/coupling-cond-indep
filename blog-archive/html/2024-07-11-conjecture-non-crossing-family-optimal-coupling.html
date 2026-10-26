@@ -1,0 +1,98 @@
+
+<p class="wp-block-paragraph">In searching for generalizations of APOC, one promising direction is to generalize its auto-regressive factorization to more general Bayesian networks. The fully general case is hard, so, to get started, it is helpful to pick another interesting special case of Bayesian networks, which is independent variables. (This is in a sense the opposite special case, since auto-regressive factorization corresponds to the maximum possible number of arcs in a Bayesian network, while independence corresponds to zero arcs.)</p>
+
+
+
+<p class="wp-block-paragraph">Even the special case of independence turns out to be hard, and I haven&#8217;t yet been able to prove an optimal coupling result for it. However, I&#8217;ve formulated a conjecture in which exploratory experiments give me some confidence.</p>
+
+
+
+<h1 class="wp-block-heading">Conjecture: non-crossing-family-optimal coupling</h1>
+
+
+
+<p class="wp-block-paragraph">Given:</p>
+
+
+
+<ul class="wp-block-list">
+<li>Finite set Sigma (the token vocabulary).</li>
+
+
+
+<li>Integer n &gt;= 1.</li>
+
+
+
+<li>Random variables X,Y taking values in Sigma^n, such that <code>X_1,...,X_n</code> are independent and <code>Y_1,...,Y_n</code> are independent.</li>
+</ul>
+
+
+
+<p class="wp-block-paragraph">Let F be a non-crossing family of sets of indexes. i.e. F is a subset of <code>2^[n]</code>, and for every I,J in F, one of the following holds:</p>
+
+
+
+<ul class="wp-block-list">
+<li><code>I /\ J = Empty</code></li>
+
+
+
+<li>I subset of J</li>
+
+
+
+<li>J subset of I</li>
+</ul>
+
+
+
+<p class="wp-block-paragraph">Then there exists a coupling of X and Y such that, for every I in F and a in Sigma^n,</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+P&#91;X_I = Y_I = a_I] = min{ P&#91;X_I = a_I], P&#91;Y_I = a_I] }
+</pre></div>
+
+
+<p class="wp-block-paragraph">where <code>X_I = a_I</code> means <code>X_i = a_i forall i in I</code>.</p>
+
+
+
+<h1 class="wp-block-heading">Discussion</h1>
+
+
+
+<p class="wp-block-paragraph">Note that, since coupling X and Y doesn&#8217;t change the marginal distributions, we still have independence of <code>X_1,...,X_n</code> and independence of <code>Y_1,...,Y_n</code>.</p>
+
+
+
+<p class="wp-block-paragraph">The independence requirement is necessary, as shown by <a href="https://masharpe.wordpress.com/2024/06/27/two-useful-simple-counterexamples-of-string-coupling/">the second counterexample of an earlier post</a>.</p>
+
+
+
+<p class="wp-block-paragraph">Regarding progress towards proving the conjecture, I haven&#8217;t even proven it for the special case of n=2 and |Sigma|=2. (This should be possible by doing enough case analysis, but it becomes unwieldy quickly.)</p>
+
+
+
+<h1 class="wp-block-heading">Exploratory experiments</h1>
+
+
+
+<p class="wp-block-paragraph">Since it is hard to either prove the conjecture, even in special cases, as well as hard to provide a counterexample establishing the necessity of the non-crossing condition, I resorted to computational experiments.</p>
+
+
+
+<p class="wp-block-paragraph">Given the probability distributions for X and Y, the existence of an NCFO coupling can be determined using linear programming. So this naturally suggests a Monte Carlo approach: generate a random probability distribution for each of X and Y, then check whether an NCFO coupling exists. By doing many trials, we hope to find a counterexample, if one exists.</p>
+
+
+
+<p class="wp-block-paragraph">Here is the table of results, with 100 trials for each case.</p>
+
+
+
+<figure class="wp-block-table"><table class="has-fixed-layout"><thead><tr><th>n</th><th>|Sigma|</th><th>F</th><th>Failure rate</th></tr></thead><tbody><tr><td>2</td><td>2</td><td><code>{{0}, {1}, {0,1}}</code></td><td>0%</td></tr><tr><td>3</td><td>2</td><td><code>{{0}, {1}, {0,1}, {2}, {0,1,2}}</code></td><td>0%</td></tr><tr><td>3</td><td>2</td><td><code>{{0,1}, {0,2}}</code></td><td>41%</td></tr><tr><td>2</td><td>3</td><td><code>{{0}, {1}, {0,1}}</code></td><td>0%</td></tr><tr><td>4</td><td>2</td><td><code>{{0}, {1}, {0,1}, {2}, {3}, {2,3}, {0,1,2,3}}</code></td><td>0%</td></tr><tr><td>4</td><td>2</td><td><code>{{0}, {1}, {0,1}, {2}, {0,1,2}, {3}, {0,1,2,3}}</code></td><td>0%</td></tr><tr><td>2</td><td>4</td><td><code>{{0}, {1}, {0,1}}</code></td><td>0%</td></tr><tr><td>4</td><td>2</td><td><code>{{0,1,2}, {2,3}}</code></td><td>57%</td></tr></tbody></table></figure>
+
+
+
+<p class="wp-block-paragraph">Observe that both cases where F is crossing fail, whereas no failure is observed for non-crossing F. Also, note that one n=4 case is included where the structure of F is of a complete binary tree, rather than prefixes. Even with that structure, an optimal coupling is always found.</p>

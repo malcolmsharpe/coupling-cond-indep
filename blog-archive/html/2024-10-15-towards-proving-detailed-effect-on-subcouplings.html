@@ -1,0 +1,58 @@
+
+<p class="wp-block-paragraph"><a href="https://masharpe.wordpress.com/2024/10/14/mrc-reference-rough-draft/">Yesterday&#8217;s maximal recoupling draft</a> needs proofs for the appendix, and while I have sketches for many of them, the biggest hole is proving detailed effect on subcouplings (Proposition 4 in the PDF). In this post, I&#8217;ll state a lemma and give a proof sketch for it.</p>
+
+
+
+<p class="wp-block-paragraph">Because of the connection to Markov chains, we&#8217;ll call P <em>irreducible</em> if every <code>x in E</code> has a nonzero path (wrt P) to some &#8220;sink&#8221; <code>y in E</code>, where &#8220;sink&#8221; means <code>P_Y(y) &gt; P_X(y)</code>.</p>
+
+
+
+<p class="wp-block-paragraph">In an execution of the MRC loop, call <code>a_0, ..., a_l</code> its <em>trajectory</em>, where <code>a_0 = x</code>, <code>a_l</code> is the final value of y, and <code>a_1, ..., a_{l-1}</code> are the intermediate values of a.</p>
+
+
+
+<p class="wp-block-paragraph">For a trajectory <code>t = a_0, ..., a_l</code>, let</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+g_old(t) = sum_{i=1}^l e_{x_{i-1} x_i}
+g_new(t) = sum_{i=1}^{l-1} e_{x_i x_i} + e_{x_0 x_l}
+</pre></div>
+
+
+<p class="wp-block-paragraph">where <code>e</code> indicates a one-hot vector.</p>
+
+
+
+<p class="wp-block-paragraph"><strong>Lemma.</strong> Assume P is irreducible. Then</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+P_{XY} = E_t&#91;g_old(t)]
+Phat_{XY} = E_t&#91;g_new(t)]
+</pre></div>
+
+
+<p class="wp-block-paragraph">where the expectation is over one execution of the maximal recoupling algorithm.</p>
+
+
+
+<p class="wp-block-paragraph"><strong>Proof sketch.</strong> We&#8217;ve shown previously that, given irreducibility, the expected number of transitions from x to y is <code>P_{XY}(x,y)</code>, which shows the first statement.</p>
+
+
+
+<p class="wp-block-paragraph">Now let&#8217;s show the second statement. For non-self arcs, the claim is immediate from the algorithm. So we only need to check self-loops.</p>
+
+
+
+<p class="wp-block-paragraph">Take <code>x in E</code>. From the algorithm, we have</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+Phat_{XY}(x,x) = min{ P_X(x), P_Y(x) }
+``
+Also,
+</pre></div>
+
+
+<p class="wp-block-paragraph">E_t[g_new(t)<em>{xx}] = E_t[# times x is interior of t] = E_t[ (# times x is a tail in t) &#8211; {t_0 = x} ] = sum_y P</em>{XY}(x,y) &#8211; max{0, P_X(x) &#8211; P_Y(x)}<br>= P_X(x) &#8211; max{0, P_X(x) &#8211; P_Y(x)}<br>= min{ P_X(x), P_Y(x) }<br>&#8220;`<br>which establishes the equality. <strong>[]</strong></p>

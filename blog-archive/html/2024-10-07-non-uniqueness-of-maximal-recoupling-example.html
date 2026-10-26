@@ -1,0 +1,70 @@
+
+<p class="wp-block-paragraph">Classic maximal couplings are well-known to be non-unique in general. Maximal recoupling however imposes more constraints than maximal coupling&#8211;are those constraints enough to force uniqueness? In fact they aren&#8217;t, as we&#8217;ll show here with a simple example.</p>
+
+
+
+<p class="wp-block-paragraph">Let the initial joint distribution be:</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+X,Y =
+    a,c wp 1/4
+    b,c wp 1/4
+    c,d wp 1/4
+    c,e wp 1/4
+</pre></div>
+
+
+<p class="wp-block-paragraph">so the marginals are</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+X =
+    a wp 1/4
+    b wp 1/4
+    c wp 1/2
+
+Y =
+    c wp 1/2
+    d wp 1/4
+    e wp 1/4
+</pre></div>
+
+
+<p class="wp-block-paragraph">In graph form, a and b are sources, d and e are sources, and c is neither:</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+a     d
+ \   ^
+  v /
+   c
+  ^ \
+ /   v
+b     e
+</pre></div>
+
+
+<p class="wp-block-paragraph">It&#8217;s easy to find two different decompositions of this flow into a distribution of walks, which, by shortcutting each walk, yield distinct MRCs:</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+#1
+X,Y =
+    c,c wp 1/2
+    a,d wp 1/4
+    b,e wp 1/4
+
+#2
+X,Y =
+    c,c wp 1/2
+    a,e wp 1/4
+    b,d wp 1/4
+</pre></div>
+
+
+<p class="wp-block-paragraph">Verifying that there are indeed MRCs will wait for the future, since I have not nailed down the ideal definition for &#8220;a maximal recoupling&#8221;. But any reasonable definition should find that these are both MRCs.</p>
+
+
+
+<p class="wp-block-paragraph"></p>

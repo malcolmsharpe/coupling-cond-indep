@@ -1,0 +1,124 @@
+
+<p class="wp-block-paragraph">Although <a href="https://masharpe.wordpress.com/2024/03/05/all-prefix-optimal-coupling-for-model-comparison/">I&#8217;ve previously described the algorithm for unconditional sampling from the APOC joint distribution</a>, that description was vague. For implementation purposes, it was necessary to create more precise descriptions.</p>
+
+
+
+<p class="wp-block-paragraph">The first such precise description of the APOC unconditional sampling algorithm is conceptual pseudocode: it specifies the algorithm precisely with minimum clutter, but it has limitations that make it unsuitable as a direct template for implementation, which I&#8217;ll discuss after.</p>
+
+
+
+<h1 class="wp-block-heading">Pseudocode</h1>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+for i = 0, 1, 2, ...:
+    pxa := P&#91;X_{&lt;i} = a_{&lt;i}]
+    pyb := P&#91;Y_{&lt;i} = b_{&lt;i}]
+
+    forall t:
+        pxat_V&#91;t] := P&#91;X_{&lt;=i} = a_{&lt;i} ++ t]
+        pyat_V&#91;t] := P&#91;Y_{&lt;=i} = a_{&lt;i} ++ t]
+
+        pxbt_V&#91;t] := P&#91;X_{&lt;=i} = b_{&lt;i} ++ t]
+        pybt_V&#91;t] := P&#91;Y_{&lt;=i} = b_{&lt;i} ++ t]
+
+    if a_{&lt;i} = b_{&lt;i}:
+        pmeet_V := minimum(pxat_V, pybt_V) / min(pxa, pyb)
+        pmeet := sum(pmeet_V)
+
+        if random() &gt; pmeet:
+            goto else
+
+        a&#91;i] := b&#91;i] := multinomial(pmeet_V)
+    else:
+        wxt_V := maximum(0, pxat_V - pyat_V)
+        wyt_V := maximum(0, pybt_V - pxbt_V)
+
+        a&#91;i] := multinomial(wxt_V)
+        b&#91;i] := multinomial(wyt_V)
+</pre></div>
+
+
+<p class="wp-block-paragraph">Terminology:</p>
+
+
+
+<ul class="wp-block-list">
+<li>X and Y are random variables for the two responses.</li>
+
+
+
+<li>a and b are the particular values of X and Y respectively during the current execution.</li>
+
+
+
+<li>t is a token.</li>
+
+
+
+<li><code>random()</code> returns a number uniformly sampled from <code>[0,1)</code>.</li>
+
+
+
+<li><code>multinomial(p_V)</code> returns a draw from the discrete distribution with probabilities given by <code>p_V</code>.</li>
+</ul>
+
+
+
+<h1 class="wp-block-heading">Limitations</h1>
+
+
+
+<h2 class="wp-block-heading">Floating-point underflow</h2>
+
+
+
+<p class="wp-block-paragraph">Token string probabilities, such as <code>P[X = a]</code>, will typically underflow the range of normalized floating-point numbers, even with double-precision floating-point.</p>
+
+
+
+<p class="wp-block-paragraph">To see why, note that -1022 is the minimum exponent representable by normalized double-precision floating-point numbers. <code>2^-1022</code> is about <code>2e-308</code>, so, for example, a 512-token response of 10%-probability tokens would underflow.</p>
+
+
+
+<p class="wp-block-paragraph">The solution is to use log-probabilities in the algorithm instead of probabilities.</p>
+
+
+
+<h2 class="wp-block-heading">Not expressed in terms of LLM forward passes</h2>
+
+
+
+<p class="wp-block-paragraph">The operation available with a real LLM is a forward pass that returns logits for the next token. The above pseudocode is instead expressed in terms of probabilities of prefixes.</p>
+
+
+
+<p class="wp-block-paragraph">It&#8217;s straightforward to convert from next-token logits to prefix probabilities, but some care is needed so that it works well with floating point.</p>
+
+
+
+<h2 class="wp-block-heading">No EOS handling</h2>
+
+
+
+<p class="wp-block-paragraph">Real LLMs typically terminate their generation with an end-of-string (EOS) token. Conceptually, it&#8217;s convenient to imagine that, once generation has produced one EOS token, the LLM will forevermore return 100% probability for the EOS token. In practice, though, LLMs will produce non-EOS tokens if generation is continued after EOS, so the EOS token must be specially handled.</p>
+
+
+
+<h2 class="wp-block-heading">Poor time complexity</h2>
+
+
+
+<p class="wp-block-paragraph">The various probabilities used in the loop body are probabilities of strings of tokens, so calculating them in the naive way recomputes many LLM forward passes in each iteration. It&#8217;s more efficient to accumulate probabilities so only a constant number of forward passes is needed in each iteration.</p>
+
+
+
+<h2 class="wp-block-heading">Sensitivity to inference engine nondeterminism</h2>
+
+
+
+<p class="wp-block-paragraph">Although an LLM forward pass theoretically always returns the same outputs when given the same inputs, this is typically not true with practical inference engines. (As one strange consequence, temp=0 sampling is nondeterministic with some APIs.) Since modern LLMs typically use bfloat16 as their floating-point type for inference, which has a small (7-bit) fraction, floating-point error can produce noticeable differences in the next-token probability distribution, so the impact of nondeterminism is non-negligible.</p>
+
+
+
+<p class="wp-block-paragraph">A partial solution is to never do an LLM forward pass with the same inputs twice. Instead, reuse the previous result. This is also faster, since LLM forward passes are expensive.</p>

@@ -1,0 +1,305 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{fancyhdr}
+\usepackage[capitalize,noabbrev]{cleveref}
+\usepackage{algorithmic,algorithm}
+\usepackage{xspace}
+
+\usepackage[backend=biber,sorting=none]{biblatex}
+\addbibresource{mybib.bib}
+
+\pagestyle{fancy}
+\fancyhead[R]{ROUGH DRAFT}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{proposition}{Proposition}
+\newtheorem{corollary}{Corollary}
+\newtheorem{remark}{Remark}
+\newtheorem{definition}{Definition}
+
+\newcommand{\F}{\mathcal{F}}
+\newcommand{\mrc}{MRC\xspace}
+
+\title{Maximal recoupling}
+\author{Malcolm Sharpe}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+% Apply fancy style to the first page
+\thispagestyle{fancy}
+
+\begin{abstract}
+Given two random variables,
+the maximal coupling algorithm samples from a new joint distribution that
+maximizes agreement probability while preserving marginal distributions.
+However, the structure of the original joint distribution is lost---in particular,
+maximal subcouplings are typically destroyed.
+We present a simple generalization,
+the maximal recoupling algorithm,
+which samples from a maximal coupling while preserving pre-existing maximal subcouplings.
+We apply maximal recoupling to obtain a simultaneously maximal coupling of independent random variables.
+\end{abstract}
+
+\section{Introduction}
+
+\section{Preliminaries}
+
+Let $X$ and $Y$ be random variables taking values in a finite set $E$.
+
+\begin{definition}
+    A \textit{coupling} of $X$ and $Y$ is a joint distribution $\hat{P}$
+    that preserves the marginal distributions.
+    i.e. $\hat{P}_X = P_X$ and $\hat{P}_Y = P_Y$.
+\end{definition}
+
+\begin{definition}
+    A coupling $\hat{P}$ is \textit{maximal} if $\hat{P}[X = Y] = 1 - D_{\text{TVD}}(P_X, P_Y)$.
+\end{definition}
+
+\subsection*{The maximal coupling algorithm}
+
+Johnson \cite{johnson1998coupling} gave a rejection sampling algorithm for sampling from a maximal coupling.
+
+\begin{algorithm}[h]
+\caption{Maximal coupling \cite{johnson1998coupling}}
+\label{alg:maximal_coupling}
+\begin{algorithmic}[1]
+\REQUIRE{Sampling routines and likelihood functions for $P_X$ and $P_Y$.}
+\STATE Generate \(x \sim P_X\) and \(u \sim U(0,1)\).
+\STATE \textbf{if} \(u < \frac{P_Y(x)}{P_X(x)}\) \textbf{then return} \((x, x)\). \textbf{end if}
+\LOOP
+\STATE Generate \(y \sim P_Y\) and \(u \sim U(0,1)\).
+\STATE \textbf{if} \(u > \frac{P_X(y)}{P_Y(y)}\) \textbf{then return} \((x, y)\). \textbf{end if}
+\ENDLOOP
+\end{algorithmic}
+\end{algorithm}
+
+\section{The maximal recoupling algorithm}
+
+\subsection{Pseudocode}
+
+\begin{algorithm}[h]
+\caption{Maximal recoupling (\mrc)}
+\label{alg:maximal_recoupling}
+\begin{algorithmic}[1]
+\REQUIRE{Sampling routines for $P_X$ and $P_{Y|X=x}$. Likelihood functions for $P_X$ and $P_Y$.}
+\STATE Generate \(x \sim P_X\) and \(u \sim U(0,1)\).
+\STATE \textbf{if} \(u < \frac{P_Y(x)}{P_X(x)}\) \textbf{then return} \((x, x)\). \textbf{end if}
+\STATE Set \(y \gets x\).
+\LOOP
+\STATE Generate \(y \sim P_{Y|X=y}\) and \(u \sim U(0,1)\).
+\STATE \textbf{if} \(u > \frac{P_X(y)}{P_Y(y)}\) \textbf{then return} \((x, y)\). \textbf{end if}
+\ENDLOOP
+\end{algorithmic}
+\end{algorithm}
+
+\begin{remark}
+    When $X$ and $Y$ are independent, this algorithm is equivalent to the rejection sampling
+    algorithm for maximal coupling.
+\end{remark}
+
+\subsection{Analysis}
+
+Let \(\hat{P}_{XY}\) be the joint distribution arising from the maximal recoupling algorithm.
+The first few properties also hold for the maximal coupling algorithm.
+
+\begin{proposition}
+    \(\hat{P}_{XY}\) is a coupling. i.e. $\hat{P}_X = P_X$ and $\hat{P}_Y = P_Y$.
+\end{proposition}
+
+\begin{proposition}
+    \(\hat{P}_{XY}\) is maximal. i.e. For all \(e \in E\),
+    \[
+        \hat{P}_{XY}(e,e) = \min \{ P_X(e), P_Y(e) \}.
+    \]
+\end{proposition}
+
+For a proof, see \cref{sec:proofs}.
+
+\begin{proposition}
+    Assume a series of draws from $\hat{P}_{Y|X}$ obeys,
+    for all $x \in E$,
+    \[
+        E[\text{number of draws from \(\hat{P}_{Y|X=x}\)}] \le P_X(x).
+    \]
+    Then, for all $x \in E$,
+    \[
+        E[\text{number of draws from \(P_{Y|X=x}\)}] \le P_X(x).
+    \]
+\end{proposition}
+
+\begin{corollary}
+    During one draw from $\hat{P}_{XY}$,
+    \[
+        E[\text{number of draws from \(P_{Y|X}\)}] \le 1.
+    \]
+\end{corollary}
+
+The next property is what distinguishes maximal recoupling from maximal coupling.
+
+\begin{proposition}
+    Let $E'$ be a finite set and $f : E \to E'$. Then
+    \[
+    D_{\text{TVD}}(P_{f(X)f(Y)}, \hat{P}_{f(X)f(Y)})
+    \le 2 \left(\hat{P}[f(X) = f(Y)] - P[f(X) = f(Y)]\right).
+    \]
+\end{proposition}
+
+\begin{corollary}
+    Let $E'$ be a finite set and $f : E \to E'$ such that
+    $P_{f(X)f(Y)}$ is a maximal coupling of $f(X)$ and $f(Y)$.
+    Then $\hat{P}_{f(X)f(Y)} = P_{f(X)f(Y)}$.
+\end{corollary}
+
+We can express $\hat{P}$ in closed form.
+
+\begin{proposition}
+    For all $x, y \in E$:
+    \begin{itemize}
+        \item If $x = y$, then $\hat{P}_{XY}(x,y) = \min \{ P_X(x), P_Y(y) \}$.
+        \item If $x \neq y$:
+        \begin{itemize}
+            \item If $P_X(x) \leq P_Y(x)$ or $P_Y(y) \leq P_X(y)$, then $\hat{P}_{XY}(x,y) = 0$.
+            \item Otherwise,
+\begin{align*}
+&\hat{P}_{XY}(x,y) = \\
+&\quad\max \{ 0, P_X(x) - P_Y(x) \} \\
+&\quad\max \{ 0, P_Y(y) - P_X(y) \} \\
+&\quad\left( P_X(x) P_Y(y) \right)^{-1/2} \\
+&\quad\left( (I - A)^+ \right)_{xy}
+\end{align*}
+                where, for all $i,j \in E$,
+\[
+A_{ij} =
+\begin{cases}
+    \frac{P_{XY}(i,j)}{\sqrt{P_{\text{max}}(i) P_{\text{max}}(j)}} & \text{if } P_{\text{max}}(i) P_{\text{max}}(j) > 0, \\
+    0 & \text{otherwise},
+\end{cases}
+\]
+                where, for all $i \in E$,
+\[
+P_{\text{max}}(i) = \max \{ P_X(i), P_Y(i) \}.
+\]
+        \end{itemize}
+    \end{itemize}
+\end{proposition}
+
+\section{Simultaneously maximal coupling}
+
+For $n \ge 1$, let \( \mathcal{F} \) be a family of subsets of \([n]\).
+In this section, \( X = (X_1, \dots, X_n) \), \( Y = (Y_1, \dots, Y_n) \).
+
+\begin{definition}
+$\F$ is simultaneously maximally coupled if, for all $S \in \F$,
+$X_S$ and $Y_S$ are maximally coupled. i.e.
+\[
+    P[X_S = Y_S] = 1 - D_{\text{TVD}}(P_{X_S}, P_{Y_S}).
+\]
+\end{definition}
+
+This first theorem is well-known in the Markov chain literature.
+
+\begin{theorem}
+The following are equivalent:
+\begin{itemize}
+    \item For every choice of marginal distributions for $X$ and $Y$,
+    $\F$ can be simultaneously maximally coupled.
+    \item For every $S,T \in \F$, either $S \subseteq T$ or $T \subseteq S$.
+\end{itemize}
+\end{theorem}
+
+The independent case is novel.
+
+\begin{theorem}
+\raggedright
+The following are equivalent:
+\begin{itemize}
+    \item For every choice of marginal distributions for $X$ and $Y$
+    such that $X_1, \dots, X_n$ are independent
+    and $Y_1, \dots, Y_n$ are independent,
+    $\F$ can be simultaneously maximally coupled.
+    \item $\F$ is laminar. i.e. For every $S,T \in \F$, either $S \subseteq T$, $T \subseteq S$, or $S \cap T = \emptyset$.
+\end{itemize}
+\end{theorem}
+
+These two theorems can be generalized by Bayesian network structure.
+
+\begin{theorem}
+\raggedright
+Let $G$ be a directed graph with vertex set $[n]$. The following are equivalent:
+\begin{itemize}
+    \item For every choice of marginal distributions for $X$ and $Y$
+    such that $X_1, \dots, X_n$ and
+    $Y_1, \dots, Y_n$ are both Bayesian networks with respect to $G$,
+    $\F$ can be simultaneously maximally coupled.
+    \item $\F$ is laminar and, for every disjoint $S,T \in F$, $S$ and $T$ are d-separated by $\emptyset$.
+\end{itemize}
+\end{theorem}
+
+For computational purposes, this corollary is more convenient.
+
+\begin{corollary}
+Let $G$ be a directed graph with vertex set $[n]$.
+Assume $\F$ is laminar and ancestral.
+i.e. Every $S \in \F$ contains all ancestors of each of its elements.
+
+Then, for every choice of marginal distributions for $X$ and $Y$
+such that $X_1, \dots, X_n$ and
+$Y_1, \dots, Y_n$ are both Bayesian networks with respect to $G$,
+$\F$ can be simultaneously maximally coupled.
+\end{corollary}
+
+\section{Related Work}
+
+\textbf{Maximal coupling.}
+Maximal coupling is generally credited to Doeblin \cite{lindvall1991w}.
+The rejection sampling algorithm for maximal coupling was introduced by Johnson \cite{johnson1998coupling}.
+The algorithm was used implicitly for speculative decoding of auto-regressive large language models \cite{leviathan2023fast},
+which inspired our work;
+the connection was later made explicit by Sun et al. \cite{sun2024spectr}.
+
+\textbf{Simultaneously maximal coupling.}
+Sun et al. \cite{sun2024blockverificationacceleratesspeculative_v2}
+thoroughly investigated simultaneously maximal coupling for speculative decoding
+of auto-regres\-sive large language models,
+under the name Greedy Block Verification.
+The key ideas can be previously found in the Markov chain literature.
+
+\textbf{Coupling with more than two random variables.}
+Another interesting direction for generalizing maximal coupling
+is with three or more random variables \cite{angel2021pairwiseoptimalcouplingmultiple}.
+
+\printbibliography
+
+\newpage
+\appendix
+\section{Proofs} \label{sec:proofs}
+
+\begin{proposition}
+    Let $E$ be a finite set, let $X$ and $Y$ be random variables taking values in $E$, 
+    let $P$ be the joint distribution of $X$ and $Y$, and let $\hat{P}$ be the joint distribution obtained 
+    by applying \mrc to $P$. Then, for all $x \in E$:
+    \[
+    \hat{P}_{XY}(x,x) = \min \{ P_X(x), P_Y(x) \}.
+    \]
+\end{proposition}
+
+\begin{proof}
+    Observe that when \mrc returns $(x,y)$ from the loop,
+    then with probability 1 we have $P_X(x) > P_Y(x)$ and $P_Y(y) > P_X(y)$,
+    so $x \neq y$.
+
+    Take $x \in E$. Then $\hat{P}_{XY}(x,x)$ is the probability of returning $(x,x)$ 
+    from the first return statement. This occurs when $P_X$ generates $x$ 
+    and the condition $u < \frac{P_Y(x)}{P_X(x)}$ is satisfied. Thus,
+    \begin{align*}
+        \hat{P}_{XY}(x, x) 
+        &= P_X(x) \min \left\{ 1, \frac{P_Y(x)}{P_X(x)} \right\} \\
+        &= \min \{ P_X(x), P_Y(x) \}.
+    \end{align*}
+\end{proof}
+
+\end{document}

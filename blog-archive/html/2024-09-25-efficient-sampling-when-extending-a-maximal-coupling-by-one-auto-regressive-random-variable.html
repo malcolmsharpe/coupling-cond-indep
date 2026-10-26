@@ -1,0 +1,106 @@
+
+<p class="wp-block-paragraph">In my previous post, we saw <a href="https://masharpe.wordpress.com/2024/09/23/general-lemma-for-simultaneously-maximal-coupling/">a general lemma for extending maximal couplings to larger simultaneously maximal couplings</a>. Though the proof is pleasant, it doesn&#8217;t show how to efficiently sample from such a simultaneously maximal coupling.</p>
+
+
+
+<p class="wp-block-paragraph">In this post, I tackle the easiest step towards efficient sampling from a simultaneously maximal coupling: the case that corresponds to <a href="https://masharpe.wordpress.com/2024/07/04/apoc-unconditional-sampling-conceptual-pseudocode/">APOC unconditional sampling</a>. Unlike in APOC, though, this sampling algorithm can extend <em>any</em> maximal coupling.</p>
+
+
+
+<p class="wp-block-paragraph">(The harder step is efficiently sampling from an independent combination of two maximal couplings.)</p>
+
+
+
+<p class="wp-block-paragraph"><strong>Lemma.</strong> Let P be a given probability distribution of random variables X1, X2, Y1, Y2, which range over finite sets, such that X1 and Y1 are maximally coupled. Then Algorithm (below) induces a new probability distribution Palg that maximally couples X and Y and preserves the given marginal distribution of (X1,Y1).</p>
+
+
+
+<p class="wp-block-paragraph"><strong>Algorithm.</strong></p>
+
+
+
+<ol class="wp-block-list">
+<li>Sample (a1, b1) with probability <code>P[X1 = a1, Y1 = b1]</code>.</li>
+
+
+
+<li>If a1 = b1, with probability <code>sum_{a_2} min{ P[X=a], P[Y=a] } / P[X1 = Y1 = a1]</code>, sample a2 = b2 with weight <code>min{ P[X=a], P[Y=a] }</code>.</li>
+
+
+
+<li>Otherwise, sample a2 with weight <code>max{0, P[X=a] - P[Y=a]}</code> and b2 with weight <code>max{0, P[Y=b] - P[X=b]}</code>.</li>
+
+
+
+<li>Return X=a and Y=b.</li>
+</ol>
+
+
+
+<p class="wp-block-paragraph"><strong>Proof of lemma.</strong></p>
+
+
+
+<p class="wp-block-paragraph">The four properties we must check are:</p>
+
+
+
+<ul class="wp-block-list">
+<li>(a) <code>Palg[(X1,Y1) = (a1,b1)] = P[(X1,Y1) = (a1,b1)]</code> for all a1, b1</li>
+
+
+
+<li>(b) <code>Palg[X=a] = P[X=a]</code> for all a</li>
+
+
+
+<li>(c) <code>Palg[Y=b] = P[Y=b]</code> for all b</li>
+
+
+
+<li>(d) <code>Palg[X=Y=a] = min{ P[X=a], P[Y=b] }</code> for all a</li>
+</ul>
+
+
+
+<p class="wp-block-paragraph">Property (a) shows the marginal distribution of (X1,Y1) was preserved. Properties (b) and (c) show that Palg is a valid coupling of X and Y. Property (d) shows that Palg is a maximal coupling of X and Y.</p>
+
+
+
+<p class="wp-block-paragraph">(a) Immediate from step 1 of the algorithm.</p>
+
+
+
+<p class="wp-block-paragraph">(d) We use the chain rule of probability, then substitute the probabilities from the algorithm, then simplify:</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+Palg&#91;X=Y=a]
+    = Palg&#91;X1=Y1=a1] Palg&#91;X2=Y2 | X1=Y1=a1] Palg&#91;X2=Y2=a2 | X2=Y2, X1=Y1=a1]
+    = P&#91;X1=Y1=a1] (sum_{a2} min{P&#91;X=a], P&#91;Y=a]} / P&#91;X1=Y1=a1]) (min{P&#91;X=a], P&#91;Y=a]} / sum_{a2} min{P&#91;X=a], P&#91;Y=a]})
+    = min{P&#91;X=a], P&#91;Y=a]}
+</pre></div>
+
+
+<p class="wp-block-paragraph">(b) We apply the law of total probability to sum over disjoint cases, then substitute the probabilities from the algorithm, then simplify:</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+Palg&#91;X=a]
+    = Palg&#91;X=Y=a] + Palg&#91;X=a, Y1=a1, Y2 != a2] + Palg&#91;X=a, Y1 != a1]
+    = min{P&#91;X=a], P&#91;Y=a]}
+        + P&#91;X1=Y1=a1] (1 - sum_{a'2} min{P&#91;X=a'], P&#91;Y=a']} / P&#91;X1=Y1=a1]) max{0, P&#91;X=a] - P&#91;Y=a]} / sum_{a'2} max{0, P&#91;X=a'] - P&#91;Y=a']}
+        + sum_{b1 != a1} P&#91;X1=a1, Y1=b1]  max{0, P&#91;X=a], - P&#91;Y=a]} / sum_{a'2} max{0, P&#91;X=a'] - P&#91;Y=a']}
+    = P&#91;X=a]
+</pre></div>
+
+
+<p class="wp-block-paragraph">(c) Similar to (b). <strong>[]</strong></p>
+
+
+
+<p class="wp-block-paragraph">(Note: In the proof, I ignored various degenerate cases where the denominators can be zero. Explicitly handling them during the proof seems like a distraction, so it might be better to rewrite the proof to avoid division entirely.)</p>
+
+
+
+<p class="wp-block-paragraph"><strong>Edit:</strong> <a href="https://masharpe.wordpress.com/2024/09/26/addendum-to-previous-post/">Addendum.</a></p>

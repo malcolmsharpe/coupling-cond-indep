@@ -1,0 +1,76 @@
+
+<p class="wp-block-paragraph">Towards creating a compelling demo of APOC, here is a prototype of a demo for using APOC for prompt engineering.</p>
+
+
+
+<figure class="wp-block-gallery has-nested-images columns-default is-cropped wp-block-gallery-1 is-layout-flex wp-block-gallery-is-layout-flex">
+<figure class="wp-block-image size-large"><a href="https://masharpe.wordpress.com/wp-content/uploads/2024/08/highlight_color-2.png"><img data-attachment-id="2202" data-permalink="https://masharpe.wordpress.com/2024/08/08/prototyping-an-apoc-demo/highlight_color-3/" data-orig-file="https://masharpe.wordpress.com/wp-content/uploads/2024/08/highlight_color-2.png" data-orig-size="1227,462" data-comments-opened="1" data-image-title="highlight_color" data-image-description="" data-image-caption="" data-large-file="https://masharpe.wordpress.com/wp-content/uploads/2024/08/highlight_color-2.png?w=1024" loading="lazy" width="1024" height="385" data-id="2202" src="https://masharpe.wordpress.com/wp-content/uploads/2024/08/highlight_color-2.png?w=1024" alt="" class="wp-image-2202" srcset="https://masharpe.wordpress.com/wp-content/uploads/2024/08/highlight_color-2.png?w=1024 1024w, https://masharpe.wordpress.com/wp-content/uploads/2024/08/highlight_color-2.png?w=150 150w, https://masharpe.wordpress.com/wp-content/uploads/2024/08/highlight_color-2.png?w=300 300w, https://masharpe.wordpress.com/wp-content/uploads/2024/08/highlight_color-2.png?w=768 768w, https://masharpe.wordpress.com/wp-content/uploads/2024/08/highlight_color-2.png 1227w" sizes="auto, (max-width: 1024px) 100vw, 1024px" /></a></figure>
+
+
+
+<figure class="wp-block-image size-large"><a href="https://masharpe.wordpress.com/wp-content/uploads/2024/08/highlight_underline-2.png"><img data-attachment-id="2203" data-permalink="https://masharpe.wordpress.com/2024/08/08/prototyping-an-apoc-demo/highlight_underline-3/" data-orig-file="https://masharpe.wordpress.com/wp-content/uploads/2024/08/highlight_underline-2.png" data-orig-size="1227,702" data-comments-opened="1" data-image-title="highlight_underline" data-image-description="" data-image-caption="" data-large-file="https://masharpe.wordpress.com/wp-content/uploads/2024/08/highlight_underline-2.png?w=1024" loading="lazy" width="1024" height="585" data-id="2203" src="https://masharpe.wordpress.com/wp-content/uploads/2024/08/highlight_underline-2.png?w=1024" alt="" class="wp-image-2203" srcset="https://masharpe.wordpress.com/wp-content/uploads/2024/08/highlight_underline-2.png?w=1024 1024w, https://masharpe.wordpress.com/wp-content/uploads/2024/08/highlight_underline-2.png?w=150 150w, https://masharpe.wordpress.com/wp-content/uploads/2024/08/highlight_underline-2.png?w=300 300w, https://masharpe.wordpress.com/wp-content/uploads/2024/08/highlight_underline-2.png?w=768 768w, https://masharpe.wordpress.com/wp-content/uploads/2024/08/highlight_underline-2.png 1227w" sizes="auto, (max-width: 1024px) 100vw, 1024px" /></a></figure>
+</figure>
+
+
+
+<p class="wp-block-paragraph">(I haven&#8217;t settled on a highlight style yet. The color highlight is more of a search or diff style highlight, while the underline has an easier-to-see boundary.)</p>
+
+
+
+<p class="wp-block-paragraph">Details:</p>
+
+
+
+<ul class="wp-block-list">
+<li>Model: <code>Qwen/Qwen2-0.5B-Instruct</code> (full precision). Its small size accounts for the quirky output.</li>
+
+
+
+<li>Inference backend: Hugging Face transformers.</li>
+
+
+
+<li>Response pair distribution: APOC unconditional.</li>
+
+
+
+<li>Sampling configuration: neutral (i.e. temperature=1).</li>
+
+
+
+<li>UI framework: Gradio.</li>
+</ul>
+
+
+
+<h1 class="wp-block-heading">Motivation and explanation</h1>
+
+
+
+<p class="wp-block-paragraph">When prompt engineering, when you tweak the prompt, it can be hard to tell whether the output varies because of your prompt change or because of sampling randomness. APOC reduces the impact of sampling randomness, in a certain sense optimally. (Note: the most common option in use today for reducing sampling randomness is to use a fixed seed.)</p>
+
+
+
+<p class="wp-block-paragraph">In the example screenshots, often the model returns a quirky response, but APOC helps increase the chance that both prompts return the <em>same</em> quirky response. Note though that this only works before the responses split into non-equal suffixes.</p>
+
+
+
+<h1 class="wp-block-heading">Limitations and future work</h1>
+
+
+
+<ul class="wp-block-list">
+<li>There&#8217;s no comparison against a baseline. Fixed-seed is the obvious baseline to use. Ideally, there&#8217;d be three columns, one for the reference response, one for the fixed-seed response, and one for the APOC response. To do this requires implementing APOC conditional sampling.</li>
+
+
+
+<li>The suffixes are uncoupled: for example, in one of the example response pairs, the left response emits Python code in its suffix and the right response doesn&#8217;t. If the suffixes were coupled too, it might be possible to have them both emit code in the suffix. This is an interesting problem but creates additional difficulties.</li>
+
+
+
+<li>The model is useless. Though Qwen2-0.5B is great for testing, it has no practical use, so it&#8217;s awkward to try a prompt engineering workflow with this demo.</li>
+
+
+
+<li>The generation is slow. It&#8217;s currently running on CPU and unbatched. Moving it to GPU is not too hard, but batching APOC is non-trivial.</li>
+</ul>

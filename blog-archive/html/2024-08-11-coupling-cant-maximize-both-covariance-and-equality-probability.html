@@ -1,0 +1,60 @@
+
+<p class="wp-block-paragraph">Suppose we want to use APOC with more than two models, such as a full-precision model, an nf8 quant, and an nf4 quant. One approach is to generate from the full-precision model first, then use APOC conditional generation for each of the quants. It&#8217;s possible then to couple those conditional generations further. The first decision in a conditional generation is the choice of split point, and there are two ways we might imagine coupling the split point:</p>
+
+
+
+<ul class="wp-block-list">
+<li>We might try to make the two responses have the same split point, since that allows coupling the suffixes too.</li>
+
+
+
+<li>We might try to make the two responses have nearby split points, which reduces the variance of the difference of longest common prefix length.</li>
+</ul>
+
+
+
+<p class="wp-block-paragraph">But we can&#8217;t achieve both these goals simultaneously, in general.</p>
+
+
+
+<p class="wp-block-paragraph">Abstractly, we&#8217;re coupling two real-valued random variables. We may choose the coupling to maximize probability of equality (the first option) or to maximize covariance (the second option). Here&#8217;s a simple example showing that these two options can yield different couplings.</p>
+
+
+
+<p class="wp-block-paragraph">Let</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+X ~
+    -1 wp 50%
+    0 wp 50%
+Y ~
+    0 wp 50%
+    +1 wp 50%
+</pre></div>
+
+
+<p class="wp-block-paragraph">When coupling to maximize equality probability:</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+X,Y ~
+    0,0 wp 50%
+    -1,+1 wp 50%
+
+P&#91;X = Y] = 50%
+E&#91;XY] = -0.5
+</pre></div>
+
+
+<p class="wp-block-paragraph">When coupling to maximize covariance:</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+X,Y ~
+    -1,0 wp 50%
+    0,+1 wp 50%
+
+P&#91;X = Y] = 0%
+E&#91;XY] = 0
+</pre></div>

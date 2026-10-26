@@ -1,0 +1,76 @@
+
+<p class="wp-block-paragraph">Speculative decoding is a technique for generating responses from large LLMs with lower latency by exploiting parallelism. It implicitly couples the draft model and reference model, with a per-token optimal coupling (PTOC), which inspired all-prefix-optimal coupling (APOC).</p>
+
+
+
+<p class="wp-block-paragraph">Given that spec dec inspired APOC, it&#8217;s natural to wonder whether APOC could be applied to speculative decoding. Indeed, this seems possible, if two conditions are met:</p>
+
+
+
+<ul class="wp-block-list">
+<li>The draft model must be sufficiently cheap to evaluate.</li>
+
+
+
+<li>The draft model must sometimes sample tokens that are more likely under the reference model than under the draft model. (For this to be true, the draft model must be probabilistic and must closely approximate the reference model.)</li>
+</ul>
+
+
+
+<p class="wp-block-paragraph">If these two conditions are met, here is an illustrative-but-extreme example of how you might do spec dec using APOC:</p>
+
+
+
+<ol class="wp-block-list">
+<li>Sample the entire response using the draft model.</li>
+
+
+
+<li>Using the start of the APOC conditional sampling algorithm, reject a suffix of the draft to find the split point, and sample a token at the split point.</li>
+
+
+
+<li>The APOC conditional samplign algorithm would now usually sample a suffix; call this suffix distribution the &#8220;residual model&#8221;.</li>
+
+
+
+<li>Return to step 1, recursively applying speculative decoding to the residual model.</li>
+</ol>
+
+
+
+<p class="wp-block-paragraph">Note that every iteration accumulates another instantiation of the draft model that must be evaluated, which is why the draft model must be very cheap. A milder form of this approach could generate only a certain number of tokens rather than a whole response. That&#8217;s essentially a hybrid of PTOC and APOC, and various other hybrids may be considered as well.</p>
+
+
+
+<p class="wp-block-paragraph">If APOC indeed proves useful for spec dec as I speculate above, that raises the possibility that APOC is already known in the spec dec literature, but I don&#8217;t think it is. Though there are many spec dec papers now, most of them are focused on engineering, and many are non-probabilistic (which makes APOC useless, as I mentioned earlier).</p>
+
+
+
+<p class="wp-block-paragraph">In a quick skim of the literature, I only found three spec dec papers that seem worth citing in a &#8220;Related Work&#8221; section:</p>
+
+
+
+<ul class="wp-block-list">
+<li><a href="https://arxiv.org/abs/2211.17192">The original Leviathan et al. 2023 speculative decoding paper.</a></li>
+
+
+
+<li><a href="https://arxiv.org/abs/2302.01318">The later, independent reinvention by Chen et al. 2023.</a></li>
+
+
+
+<li><a href="https://proceedings.neurips.cc/paper_files/paper/2023/hash/6034a661584af6c28fd97a6f23e56c0a-Abstract-Conference.html">Sun et al. 2023, which makes the connection to coupling explicit.</a></li>
+</ul>
+
+
+
+<p class="wp-block-paragraph">The final paper, by Sun et al., is fundamentally still rooted in the per-token setting: their improvement is to generalize to multiple candidates per token. The novelty of APOC is to eliminate the dependence on the granularity of the tokenizer, and this is only possible by breaking out of the per-token viewpoint.</p>
+
+
+
+<p class="wp-block-paragraph">Unfortunately, demonstrating practical usefulness of APOC for spec dec would be quite challenging.</p>
+
+
+
+<p class="wp-block-paragraph"></p>

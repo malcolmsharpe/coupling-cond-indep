@@ -1,0 +1,184 @@
+
+<p class="wp-block-paragraph">Here are some odds and ends that may be useful for the preprint draft.</p>
+
+
+
+<h1 class="wp-block-heading">Markov chains</h1>
+
+
+
+<h2 class="wp-block-heading">Flow implied by stationary distribution</h2>
+
+
+
+<p class="wp-block-paragraph">Let P be the transition matrix of a finite Markov chain, and let pi be a stationary distribution, i.e. <code>pi^T P = pi^T</code>. Let <code>A = Diag(pi) P</code>.</p>
+
+
+
+<p class="wp-block-paragraph">Then the sum of A is 1 and, for all i, its ith row sum equals its ith column sum equals pi_i.</p>
+
+
+
+<p class="wp-block-paragraph">Proof of whole sum:</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+1^T A 1
+    = 1^T Diag(pi) P 1
+    = 1^T Diag(pi) 1
+    = 1
+</pre></div>
+
+
+<p class="wp-block-paragraph">Proof of row sum: for all i,</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+e_i^T A 1
+    = e_i^T Diag(pi) P 1
+    = e_i^T Diag(pi) 1
+    = e_i^T pi
+    = pi_i
+</pre></div>
+
+
+<p class="wp-block-paragraph">Proof of column sum: for all i,</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+1^T A e_i
+    = 1^T Diag(pi) P e_i
+    = pi^T P e_i
+    = pi^T e_i
+    = pi_i
+</pre></div>
+
+
+<p class="wp-block-paragraph">So A gives a joint distribution of transitions. Moreover, if <code>(I,J) ~ A</code>, then <code>Law(I) = Law(J) = pi</code>, so A is a coupling of pi with pi.</p>
+
+
+
+<h2 class="wp-block-heading">Beliefs</h2>
+
+
+
+<p class="wp-block-paragraph">I have reasonable confidence that these beliefs are true, though maybe with slightly different conditions. I would like to find them in a Markov chain reference so that I can cite them.</p>
+
+
+
+<p class="wp-block-paragraph"><strong>Belief.</strong> Given a Markov chain with state space E and a stationary distribution pi, if <code>s in E</code> has <code>pi_s &gt; 0</code>, then s is recurrent.</p>
+
+
+
+<p class="wp-block-paragraph"><strong>Proof idea.</strong> Suppose that s is not recurrent. Then there is a nonzero probability <code>p</code> that a path starting at s does not return to s. Consider the distribution of infinite paths with starting state distributed according to pi. There is some probability that such a path does not contain s. By taking one step, that probability increases by <code>pi_s * p &gt; 0</code>. But pi was a stationary distribution, so the distribution of paths is the same, a contradiction. <strong>[]</strong></p>
+
+
+
+<p class="wp-block-paragraph">I call the above a proof idea rather than a proof because it is not quite rigorous. Some care is needed to handle the distribution of infinite paths, since in general there are uncountably many of them.</p>
+
+
+
+<p class="wp-block-paragraph"><strong>Belief.</strong> Let a Markov chain with finite state space E and transition matrix P have a stationary distribution pi. Let <code>s in E</code> have <code>pi_s &gt; 0</code>. Let <code>A = Diag(pi) P</code>. For <code>i,j in E</code>, let <code>N_{ij}^{(s)}</code> be the expected number of transitions from i to j before the first return to s for a path that begins at s. Then <code>N_{ij}^{(s)} &lt;= pi_s^{-1} A_{ij}</code>.</p>
+
+
+
+<p class="wp-block-paragraph"><strong>Proof idea.</strong> By the previous belief, s is recurrent. Consider the distribution of infinite paths with starting state distributed according to pi. Note that the chain may be reducible, so the measure of the subset of these paths that contain s may be less than 1. But since s is recurrent, every path that does contain s contains it infinitely many times, with probability 1.</p>
+
+
+
+<p class="wp-block-paragraph">Then compare frequency of s with the frequency of each transition. The frequency of s is given by pi_s; the frequency of each transition i,j is <code>A_{ij}</code>; and the frequency of each transition i,j that has s in the future is <code>&lt;= A_{ij}</code>. Then we take the ratio of frequencies to get <code>N_{ij}^{(s)} &lt;= pi_s^{-1} A_{ij}</code>. <strong>[]</strong></p>
+
+
+
+<p class="wp-block-paragraph">The above proof idea has the same issues with handling the distribution of infinite paths rigorously, along with a new issue of relating this frequency ratio to the paths from s to itself.</p>
+
+
+
+<p class="wp-block-paragraph"><strong>Believed corollary.</strong> The expected number of transitions before first return is <code>&lt;= pi_s^{-1}</code>.</p>
+
+
+
+<h1 class="wp-block-heading">Maximal recoupling</h1>
+
+
+
+<h2 class="wp-block-heading">Efficiency</h2>
+
+
+
+<p class="wp-block-paragraph">To use MRC recursively, as in SMC-I and SMC-BN, we need a finely-detailed claim about MRC&#8217;s efficiency.</p>
+
+
+
+<p class="wp-block-paragraph"><strong>Belief.</strong> Consider a series of calls to <code>MRC_{Y|X}</code> such that, for all x,</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+E&#91;number of inputs x] &lt;= P_X(x)
+</pre></div>
+
+
+<p class="wp-block-paragraph">Then, for all x,</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+E&#91;number of samples from "Y|X=x"] &lt;= P_X(x)
+</pre></div>
+
+
+<h2 class="wp-block-heading">Reducing MRC&#8217;s loop to a Markov chain</h2>
+
+
+
+<p class="wp-block-paragraph">Begin with the states as vertices with flow from v to w given by <code>P_{XY}(v,w)</code>. Add an auxiliary node s with flow that balances the original nodes. So s has outflow and inflow <code>D_{TVD}(X,Y)</code>, which we&#8217;ll label D for concision.</p>
+
+
+
+<p class="wp-block-paragraph">Then the total flow is <code>1 + 2D</code>. So, for all v, <code>pi_v = (1 + 2D)^{-1} f_v</code> is a stationary distribution. In particular, <code>pi_s = (1 + 2D)^{-1} D</code>. The mean hitting time of s is</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+&lt;= pi_s^{-1} = (1 + 2D)/D
+</pre></div>
+
+
+<p class="wp-block-paragraph">In MRC:</p>
+
+
+
+<ul class="wp-block-list">
+<li>The loop is entered with probability D.</li>
+
+
+
+<li>The number of samples from Y|X is &#8220;path length &#8211; 2&#8221;.</li>
+</ul>
+
+
+
+<p class="wp-block-paragraph">So the expected number of samples from Y|X per execution is</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+&lt;= D ((1 + 2D)/D - 2)
+= 1
+</pre></div>
+
+
+<h2 class="wp-block-heading">Effect on subcouplings</h2>
+
+
+
+<p class="wp-block-paragraph">The most powerful statement about <a href="https://masharpe.wordpress.com/2024/10/02/details-of-maximal-recouplings-effect-on-subcouplings/">MRC&#8217;s effect on subcouplings</a> is the following. I have removed the equivalence class language that I&#8217;ve used before, because I don&#8217;t think it helps.</p>
+
+
+
+<p class="wp-block-paragraph"><strong>Belief.</strong> Let <code>f : E -&gt; E'</code> be a function to a finite set E&#8217;. Let Phat be the joint distribution arising from applying MRC to a joint distribution P. Then</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+D_{TVD}(P_{f(X)f(Y)}, Phat_{f(X)f(Y)}) &lt;= 2 (P&#91;f(X) = f(Y)] - Phat&#91;f(X) = f(Y)])
+</pre></div>
+
+
+<p class="wp-block-paragraph">The proof idea I had in the previous post was rather handwavy, so I&#8217;d like to find a concise algebraic proof.</p>

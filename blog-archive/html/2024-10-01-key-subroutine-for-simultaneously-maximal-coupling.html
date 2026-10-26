@@ -1,0 +1,128 @@
+
+<p class="wp-block-paragraph">Yesterday, I had a breakthrough on the problem of sampling from simultaneously maximal couplings of Bayesian networks (SMCBN). The key step is sampling from a maximal coupling that is constructed to preserve subcouplings, and, in contrast to the complicated approaches I was exploring, I chanced on a beautifully simple solution that generalizes the standard algorithm for sampling from a maximal coupling.</p>
+
+
+
+<p class="wp-block-paragraph">This post shows that algorithm. I don&#8217;t know whether it&#8217;s original, since it&#8217;s so simple&#8211;but I need the writing practice, even if it turns out to be known. Also, although the algorithm is itself simple, proving the various properties of it is not as easy&#8211;they all remain conjectures. (So it&#8217;s still possible that the algorithm doesn&#8217;t work at all!)</p>
+
+
+
+<h1 class="wp-block-heading">Maximal recoupling algorithm</h1>
+
+
+
+<p class="wp-block-paragraph">We are given random variables X and Y that take values in the same finite set S. We are also given a joint distribution P of X and Y. Here is an algorithm to produce samples from a new joint distribution Phat:</p>
+
+
+
+<p class="wp-block-paragraph"><strong>Algorithm (maximal recoupling).</strong></p>
+
+
+
+<ol class="wp-block-list">
+<li>Sample a with probability <code>P[X=a]</code>.</li>
+
+
+
+<li>With probability <code>min{1, P[Y=a]/P[X=a]}</code>, return <code>(a,a)</code>.</li>
+
+
+
+<li>Let b_1 = a.</li>
+
+
+
+<li>For i = 1, 2, …:
+<ol class="wp-block-list">
+<li>Sample b_{i+1} with probability <code>P[Y = b_{i+1} | X = b_i]</code>.</li>
+
+
+
+<li>With probability <code>(1 / P[Y=b_{i+1}]) max{0, P[Y=b_{i+1}] - P[X=b_{i+1}]}</code>, return <code>(a, b_{i+1})</code>.</li>
+</ol>
+</li>
+</ol>
+
+
+
+<p class="wp-block-paragraph">That&#8217;s all. Note that <code>1 - min{1, P[Y=b]/P[X=b]} = (1 / P[Y=b]) max{0, P[Y=b] - P[X=b]}</code>, so the two probability expressions in the algorithm arise from the same accept/reject criterion.</p>
+
+
+
+<h1 class="wp-block-heading">Relationship to standard maximal coupling</h1>
+
+
+
+<p class="wp-block-paragraph">The algorithm above is remarkably similar to the classic algorithm for maximal coupling, which I reproduce here:</p>
+
+
+
+<p class="wp-block-paragraph"><strong>Algorithm (classic maximal coupling).</strong></p>
+
+
+
+<ol class="wp-block-list">
+<li>Sample a with probability <code>P[X=a]</code>.</li>
+
+
+
+<li>With probability <code>min{1, P[Y=a]/P[X=a]}</code>, return <code>(a,a)</code>.</li>
+
+
+
+<li>Repeat:
+<ol class="wp-block-list">
+<li>Sample b with probability <code>P[Y = b]</code>.</li>
+
+
+
+<li>With probability <code>(1 / P[Y=b]) max{0, P[Y=b] - P[X=b]}</code>, return <code>(a, b)</code>.</li>
+</ol>
+</li>
+</ol>
+
+
+
+<p class="wp-block-paragraph">In fact, the classic algorithm is simply the special case where X and Y were initially independent.</p>
+
+
+
+<h1 class="wp-block-heading">Conjectured properties of the maximal recoupling algorithm</h1>
+
+
+
+<p class="wp-block-paragraph">Conjectured properties:</p>
+
+
+
+<ul class="wp-block-list">
+<li>Phat is a valid coupling of X and Y. (i.e. It preserves the given marginal distributions of X and Y.)</li>
+
+
+
+<li>Phat maximally couples X and Y.</li>
+
+
+
+<li>The algorithm terminates with probabilility 1.</li>
+
+
+
+<li>Moreover, in one execution of the algorithm, the expected number of loop iterations is 1.</li>
+
+
+
+<li>For every partition of S into equivalence classes [-]:
+<ul class="wp-block-list">
+<li><code>Phat[ [X] = [Y] ] &gt;= P[ [X] = [Y] ]</code>.</li>
+
+
+
+<li>Moreover, if [X] and [Y] were maximally coupled by P, then the joint distribution of <code>([X], [Y])</code> is preserved.</li>
+</ul>
+</li>
+</ul>
+
+
+
+<p class="wp-block-paragraph">Notice that all but the last pair of properties are well-known to hold for the classic maximal coupling algorithm.</p>

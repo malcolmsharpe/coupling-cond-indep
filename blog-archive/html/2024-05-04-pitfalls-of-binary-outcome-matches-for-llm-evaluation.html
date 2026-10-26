@@ -1,0 +1,72 @@
+
+<p class="wp-block-paragraph">Let&#8217;s say we have two LLMs and we want to determine which we prefer. One of the most effective approaches in practice is the one used by the lmsys chatbot arena: feed a single prompt to both LLMs, show the responses blinded to the user, and ask which one the user prefers. This is done many times, and then the win-loss data is analyzed with a rating model (such as the Bradley-Terry model, which is related to Elo).</p>
+
+
+
+<p class="wp-block-paragraph">However, this method, of using matches with binary outcomes, has some strange properties, discussed below.</p>
+
+
+
+<h1 class="wp-block-heading">Non-transitivity is possible</h1>
+
+
+
+<p class="wp-block-paragraph">The usual non-transitive dice examples apply, so there can be models A B C such that A&gt;B&gt;C&gt;A, where &#8220;&gt;&#8221; means a winrate above 50%.</p>
+
+
+
+<h1 class="wp-block-heading">Coupling can change the ranking</h1>
+
+
+
+<p class="wp-block-paragraph">In previous posts, I&#8217;ve discussed coupling, which introduces a dependence between the two responses to make them easier to compare. But, unfortunately, when using matches with binary outcomes, coupling can change the ranking compared to uncoupled models.</p>
+
+
+
+<p class="wp-block-paragraph">Example: Consider a model A that has utilities 1,3,5 and a model B with utilities 2,4,6. Uncoupled, you obviously have B&gt;A. But we can couple to make A win instead:</p>
+
+
+
+<ul class="wp-block-list">
+<li>1&lt;6</li>
+
+
+
+<li>3&gt;2</li>
+
+
+
+<li>5&gt;4</li>
+</ul>
+
+
+
+<p class="wp-block-paragraph">With this coupling, A wins 67% of matches!</p>
+
+
+
+<h1 class="wp-block-heading">A bad model can outrank a good model</h1>
+
+
+
+<p class="wp-block-paragraph">Consider a model A that is perfectly consistent with utility 9 and a model B that is 60% utility 10 and 40% utility 0. Then B&gt;A by winrate, but, for downstream tasks, you&#8217;d probably prefer A.</p>
+
+
+
+<p class="wp-block-paragraph">I suspect that this might happen in practice. A might be a smart model and B a dumb model fine-tuned with a nice writing style. B will fail utterly on hard problems, but it&#8217;ll give slightly nicer answers on easy problems, so as long as there are enough easy problems in the pool, B will have a favorable winrate vs A. Though I don&#8217;t have evidence, I suspect this might explain occasional cases of small models ranking surprisingly high on the chatbot arena leaderboard.</p>
+
+
+
+<h1 class="wp-block-heading">A tentative alternative</h1>
+
+
+
+<p class="wp-block-paragraph">In principle, each model&#8217;s responses have a distribution of utility, and you&#8217;d like to rank models according to their expected utility. To implement this using pairwise comparisons, you&#8217;d have human evaluators specify the difference in utility between the two answers. That scheme eliminates all the previously discussed problems.</p>
+
+
+
+<p class="wp-block-paragraph">It&#8217;s not clear though how to make this into a practical system. Giving a numerical difference in utility is likely to be hard for any one evaluator and inconsistent between evaluators. Even an intermediate solution, such as allowing expressing strength of preference (e.g. strongly A, weakly A, tie, weakly B, strongly B), starts to have those problems.</p>
+
+
+
+<p class="wp-block-paragraph">In any case, if you <em>can</em> give feedback that&#8217;s the utility difference between two responses, then coupling is useful as variance reduction, since it allows a matched pairs experimental design.</p>

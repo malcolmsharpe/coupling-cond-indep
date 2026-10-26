@@ -1,0 +1,45 @@
+
+<p class="wp-block-paragraph">A consequence of SMC-BN is that, when X and Y consist of n subvariables each, it&#8217;s always possible to simultaneously maximally couple n (non-empty) sets, and at best it&#8217;s possible to simultaneously maximally couple 2n-1 sets (in the case where the subvariables are all independent).</p>
+
+
+
+<p class="wp-block-paragraph">But there is a puzzling asymmetry, shown strongly when X and Y are Bayesian networks with respect to a star graph G. When the arcs of G point in towards the center, 2n-2 sets may be simultaneously maximally coupled. But when the arcs of G point out away from the center, only n sets may be simultaneously maximally coupled, no better than the general case!</p>
+
+
+
+<p class="wp-block-paragraph">That a arcs-from-center star graph performs so poorly is counterintuitive, because it <em>looks</em> like a restrictive condition: when conditioned on the center, all the leaves are conditionally independent.</p>
+
+
+
+<p class="wp-block-paragraph">Here&#8217;s an explicit example to show why this star graph is not favorable for SMC. Let</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+X_0 ~ Unif(\Z_n)
+Y_0 ~ Unif(\Z_n)
+
+For 1 &lt;= i &lt;= n-1,
+    X_i = X_0
+    Y_i = Y_0 + i (mod n)
+</pre></div>
+
+
+<p class="wp-block-paragraph">Note that <code>\Z_n</code> means the integers mod n. Observe that both X and Y are Bayesian networks with respect to a star graph G where the center is 0 and the arcs point outwards from the center.</p>
+
+
+
+<p class="wp-block-paragraph">In words:</p>
+
+
+
+<ul class="wp-block-list">
+<li>For X, all subvariates are equal, with the value chosen at random from <code>\Z_n</code>.</li>
+
+
+
+<li>For Y, its subvariates are an increment cycle through all members of <code>\Z_n</code>, with the offset chosen at random.</li>
+</ul>
+
+
+
+<p class="wp-block-paragraph">For every i, <code>D_TVD(X_i, Y_i) = 0</code>, so every subvariable pair can be perfectly coupled in isolation. But there is always exactly one i such that <code>X_i = Y_i</code>, and all the others are not-equal. So at best only one subvariable pair can be simultaneously maximally coupled.</p>

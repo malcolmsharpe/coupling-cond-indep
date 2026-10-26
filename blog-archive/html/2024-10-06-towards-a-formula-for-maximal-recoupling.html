@@ -1,0 +1,72 @@
+
+<p class="wp-block-paragraph">A classic maximal coupling (CMC) can be written down with an explicit formula. Is this possible for maximal recoupling (MRC) too? This post presents an explicit formula for MRC, but it&#8217;s not very satisfactory.</p>
+
+
+
+<p class="wp-block-paragraph">CMC formula: For all a,b,</p>
+
+
+
+<ul class="wp-block-list">
+<li>If a=b, <code>Phat[X=a, Y=b] = min{ P[X=a], P[Y=b] }</code>.</li>
+
+
+
+<li>If a!=b, <code>Phat[X=a, Y=b] = (1/D) max{0, P[X=a] - P[Y=a]} max{0, P[Y=b]-P[X=b]}</code> where <code>D = TVD(X,Y)</code>.</li>
+</ul>
+
+
+
+<p class="wp-block-paragraph">MRC formula: For all a,b,</p>
+
+
+
+<ul class="wp-block-list">
+<li>If a=b, <code>Phat[X=a, Y=b] = min{ P[X=a], P[Y=b] }</code>.</li>
+
+
+
+<li>If a!=b,
+<ul class="wp-block-list">
+<li>If <code>P[X=a] &lt;= P[Y=a]</code> or <code>P[Y=b] &lt;= P[X=b]</code>, then <code>Phat[X=a, Y=b] = 0</code>.</li>
+
+
+
+<li>Otherwise,</li>
+</ul>
+</li>
+</ul>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+Phat&#91;X=a, Y=b] =
+    max{0, P&#91;X=a] - P&#91;Y=a]}
+    max{0, P&#91;Y=b] - P&#91;X=b]}
+    sum_{l &gt;= 1} sum_v (
+        prod_{i=0}^{l-1} P&#91;X=v_i, Y=v_{i+1}]
+        prod_{i=0}^l (max{P&#91;X=v_i], P&#91;Y=v_i])^{-1}
+    )
+</pre></div>
+
+
+<p class="wp-block-paragraph">where v is such that <code>v_0 = a</code>, <code>v_l = b</code>, and for all <code>1 &lt;= i &lt;= l-1</code>, <code>P[X = v_i] &gt; 0</code> or <code>P[Y = v_i] &gt; 0</code>.</p>
+
+
+
+<p class="wp-block-paragraph">The reason this is not quite satisfactory is that it&#8217;s summing over all trajectories of the MRC sampling algorithm. The formula for CMC doesn&#8217;t sum over the trajectories of the CMC sampling algorithm, so it&#8217;s simpler.</p>
+
+
+
+<p class="wp-block-paragraph">As mentioned in previous posts, when the MRC sampling algorithm is applied to the trivial coupling in which X and Y are independent, it reduces to the CMC sampling algorithm. We can observe that with this formula too. After substituting <code>P[X=v_i, Y=v_{i+1}] = P[X=v_i] P[Y=v_{i=1}]</code> and doing some algebra, the sum becomes</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+sum_{l &gt;= 1} sum_v prod_{i=1}^{l-1} min{P&#91;X=v_i], P&#91;Y=v_i]}
+    = sum_{l &gt;= 1} prod_{i=1}^{l-1} sum_{v_i} min{P&#91;X=v_i], P&#91;Y=v_i]}
+    = sum_{l &gt;= 1} (sum_c min{P&#91;X=c], P&#91;Y=c]})^{l-1}
+    = sum_{n=0}^{inf} (1 - D)^n
+    = 1/D
+</pre></div>
+
+
+<p class="wp-block-paragraph">so the formula as a whole matches the CMC formula we wrote down originally.</p>

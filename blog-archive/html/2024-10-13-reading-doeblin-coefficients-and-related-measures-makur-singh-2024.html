@@ -1,0 +1,90 @@
+
+<p class="wp-block-paragraph">This paper caught my attention by being a rare hit for &#8220;simultaneously maximal coupling&#8221; in a Google Scholar search. I wanted to see what it had to say about that topic. Here are my notes from skimming relevant sections.</p>
+
+
+
+<p class="wp-block-paragraph">Link: <a href="https://arxiv.org/abs/2309.08475">&#8220;Doeblin Coefficients and Related Measures&#8221;, Makur &amp; Singh 2024</a></p>
+
+
+
+<h1 class="wp-block-heading">Relevant content</h1>
+
+
+
+<p class="wp-block-paragraph">The main purpose of this paper is to study &#8220;Doeblin coefficients&#8221;. In the paper, Definition 1: given a row-stochastic matrix W, the Doeblin coefficient <code>tau(W)</code> is the sum of the minimum values of the columns. Note that, for a two-row matrix, this is one minus the TVD, and is the agreement probability of a maximal coupling of two random variables with marginal distributions given by the rows.</p>
+
+
+
+<p class="wp-block-paragraph">Like in the two-row case, an n-way coupling exists with all-way agreement probability <code>tau(W)</code> (Section II-A, Thoerem 2). The proof (Section III-B) goes similarly to the 2-way case: assign probability to the agreement, then make the residual sampling independent (conditioned on non-agreement). They give a formula to do this.</p>
+
+
+
+<p class="wp-block-paragraph">Section II-D studies simultaneously maximal coupling in Theorem 5. They use transposed notation compared to me: two token positions (X and Y) with n joint distributions. (Why they only study two token positions and not more, I don&#8217;t know&#8211;presumably it&#8217;s enough for the results they want to prove.) The proof (Section IV-A) again uses a formula, assigning the necessary probabilities to agreements and sampling residuals independently. <a href="https://masharpe.wordpress.com/2024/06/21/specifying-apoc/">(Compare with my post on a formula for APOC.)</a></p>
+
+
+
+<p class="wp-block-paragraph">One minor note is that finite alphabets are used throughout. They say that many results can be extended but that doing so introduces new difficulties.</p>
+
+
+
+<h1 class="wp-block-heading">Comparison to Angel &amp; Spinka 2021</h1>
+
+
+
+<p class="wp-block-paragraph">Given that they&#8217;re coupling n&gt;=3 variables, I was surprised to not see a mention of <a href="https://arxiv.org/abs/1903.00632">Angel &amp; Spinka 2021</a>. The key difference is that Makur &amp; Singh maximize n-way agreement probability. Angel &amp; Spinka try to simultaneously maximize the pairwise (2-way) agreement probabilities, which they show is not possible in general, so they settle for an approximation.</p>
+
+
+
+<h1 class="wp-block-heading">Future reading</h1>
+
+
+
+<p class="wp-block-paragraph"><strong>&#8220;Maximal Coupling&#8221;, Goldstein 1979.</strong> This is cited as the simultaneously-maximal-coupling result being generalized. Having glanced at it, it concerns non-Markovian coupling, which is what interests me, so it&#8217;s definitely worth a look.</p>
+
+
+
+<p class="wp-block-paragraph"><strong>&#8220;Strong data-processing inequalities for channels and Bayesian networks&#8221;, Polyanskiy &amp; Wu 2017.</strong> They cite Remark 10 as giving an example of impossibility of simultaneously maximally coupling all of the whole joint and both positions. That means this paper must also investigate simultaneously maximal couplings in some way.</p>
+
+
+
+<p class="wp-block-paragraph"><strong>&#8220;Markov Chains and Mixing Times&#8221;, 1st ed, Levin et al. 2009.</strong> They cite Proposition 4.7 of this text for the fact that TVD is the disagreement probability of maximal coupling, credited to Dobrushin.</p>
+
+
+
+<p class="wp-block-paragraph"><strong>&#8220;Probabilistic Machine Learning: Advanced Topics&#8221;, Murphy, 2023.</strong> They cite Section 4.2 for formalization of Bayesian networks. My understanding of Bayesian networks is fuzzy at best, so to express SMC-BN well, it may be helpful to consult this text.</p>
+
+
+
+<h1 class="wp-block-heading">Popularity</h1>
+
+
+
+<ul class="wp-block-list">
+<li>Posted: 2023.</li>
+
+
+
+<li>Published: IEEE Transactions on Information Theory, 2024.</li>
+
+
+
+<li>Citations: 4.</li>
+</ul>
+
+
+
+<h1 class="wp-block-heading">Discussion</h1>
+
+
+
+<ul class="wp-block-list">
+<li>This paper uses the term &#8220;simultaneously maximal coupling&#8221; in the same way that I do, which makes me comfortable using that term.</li>
+
+
+
+<li>That they restrict their attention to finite alphabets gives me some comfort to restrict myself to finite alphabets, too.</li>
+
+
+
+<li>The use of formulas, rather than sampling algorithms, is less interesting to me, since I am primarily interested in the LLM setting in which we want to sample from (simultaneously) maximal couplings, not just establish their existence. In fact, it&#8217;s a bit unclear to me what the motivating application is behind this paper.</li>
+</ul>

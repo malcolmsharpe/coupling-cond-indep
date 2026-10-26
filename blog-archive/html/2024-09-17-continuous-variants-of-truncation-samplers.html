@@ -1,0 +1,104 @@
+
+<p class="wp-block-paragraph">To improve the quality of LLM outputs, particularly with often-glitchy open source finetunes, people often use truncation samplers to clamp the probabilities of unlikely tokens to zero. OpenAI-compatible APIs support Top-K and Top-P. Open source inference offers more options, and Min-P is particularly popular.</p>
+
+
+
+<p class="wp-block-paragraph">An odd property of the truncation samplers mentioned above (Top-K, Top-P, Min-P) is that they are all discontinuous as functions of probability vectors. i.e. There are raw probability vectors for which small perturbations cause large changes in the post-truncation-sampler probability vector.</p>
+
+
+
+<p class="wp-block-paragraph">You might wonder why we should care whether the samplers are continuous. Indeed, for practical inference, a discontinuous sampler is fine. But we may care about sample continuity when comparing similar models or similar sampling parameters using coupling, because all reasonable coupling methods will achieve 100% agreement in the equal distribution limit. At a point where the sampler is discontinuous, the equal distribution limit doesn&#8217;t apply, so the coupling might not achieve 100% agreement.</p>
+
+
+
+<p class="wp-block-paragraph">A couple specific use cases where it&#8217;s worth considering continuous samplers:</p>
+
+
+
+<ul class="wp-block-list">
+<li>When using coupling to compare a quantization to a reference model, with samplers applied.</li>
+
+
+
+<li>When tweaking sampler parameters and inspecting the change using coupling.</li>
+</ul>
+
+
+
+<p class="wp-block-paragraph">In this post, for each sampler, we&#8217;ll look at the causes of its discontinuity and propose a continuous variant, if possible.</p>
+
+
+
+<h1 class="wp-block-heading">Top-K</h1>
+
+
+
+<p class="wp-block-paragraph">The Top-K sampler takes a parameter k. It zeros all but the largest k probabilities, then renormalizes.</p>
+
+
+
+<p class="wp-block-paragraph">Top-K is discontinuous when the probabilities at rank k and rank k+1 are equal. Small perturbations can change that ranking, causing those two probabilities to jump between zero and nonzero.</p>
+
+
+
+<p class="wp-block-paragraph">There is no natural continuous variant of Top-K. To see why, consider when there are k+1 equal probabilities. There&#8217;s no way to decide which k of them to retain.</p>
+
+
+
+<p class="wp-block-paragraph">Luckily, Top-K is not popular, so lacking a continuous variant is not a big problem.</p>
+
+
+
+<h1 class="wp-block-heading">Top-P</h1>
+
+
+
+<p class="wp-block-paragraph">The Top-P sampler takes a parameter alpha. It accumulates probabilities from largest down until accumulating a total alpha, zeros the remainder, then renormalizes.</p>
+
+
+
+<p class="wp-block-paragraph">Top-P is discontinuous when the probabilities at the cutoff are equal. Small perturbations can change the ordering, flipping probabilities from one side of the cutoff to the other.</p>
+
+
+
+<p class="wp-block-paragraph">To make a continuous variant of Top-P, find the amount beta to subtract from every probability such that the remaining probability is exactly alpha, then renormalize. i.e. Beta is chosen so that</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+sum_i max{0, p_i - beta} = alpha
+</pre></div>
+
+
+<p class="wp-block-paragraph">Beta can be found through a variety of methods, such as binary search.</p>
+
+
+
+<p class="wp-block-paragraph">Observe that this continuous variant doesn&#8217;t depend on the sorted order of the probabilities, so it doesn&#8217;t suffer from the discontinuity of ordinary Top-P.</p>
+
+
+
+<h1 class="wp-block-heading">Min-P</h1>
+
+
+
+<p class="wp-block-paragraph">The Min-P sampler takes a parameter alpha. It identifies the maximum probability p_max, zeros every probability smaller than alpha*p_max, then renormalizes.</p>
+
+
+
+<p class="wp-block-paragraph">Min-P is discontinuous when a probability is equal to the cutoff. A small perturbation of that probability causes it to fluctuate between zero and nonzero.</p>
+
+
+
+<p class="wp-block-paragraph">To make a continuous variant of Min-P, simply subtract alpha*p_max from every probability, then renormalize. i.e. Each probability p_i is replaced by</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+max{0, p_i - alpha*p_max}
+</pre></div>
+
+
+<p class="wp-block-paragraph">This still zeros every probability below alpha*p_max, but it changes other probabilities too.</p>
+
+
+
+<p class="wp-block-paragraph">Compared to ordinary Min-P, the large probabilities are slightly increased and the probabilities near the cutoff are moderately decreased, so we&#8217;d expect the overall effect to loosely resemble combining Min-P with a lowered temperature.</p>

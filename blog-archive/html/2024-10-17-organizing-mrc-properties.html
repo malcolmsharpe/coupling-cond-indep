@@ -1,0 +1,140 @@
+
+<p class="wp-block-paragraph">We&#8217;ve established a few properties of MRC&#8217;s effect on subcouplings (with proofs in the irreducible case, and at least safe conjectures for the reducible case). Now I must decide which to include in the preprint and where. Here are the properties, briefly, and which others they directly imply:</p>
+
+
+
+<ul class="wp-block-list">
+<li>(i) Self-loops don&#8217;t decrease. =&gt; (v)</li>
+
+
+
+<li>(ii) Cost decrease upper bounds sum of gross non-self arc increase. =&gt; (v)</li>
+
+
+
+<li>Used together, (i) and (ii) imply (iii).</li>
+
+
+
+<li>(iii) TVD(P,Phat) &lt;= 2 (cost decrease). =&gt; (iv), (v)</li>
+
+
+
+<li>(iv) Maximal subcouplings are preserved exactly. =&gt; (vi)</li>
+
+
+
+<li>(v) Subcoupling cost never increases. =&gt; (vi)</li>
+
+
+
+<li>(vi) Maximal subcouplings remain maximal.</li>
+</ul>
+
+
+
+<p class="wp-block-paragraph">Property (vi) is the weakest and is all we need for the application to simultaneously maximal coupling. It would be nice to express a single strongest property, but neither of (i) and (ii) implies the other, and they aren&#8217;t implied by (iii) either, so I think we need to state both. Everything that follows is an easy corollary of (i) and (ii), but (i) and (ii) are both tricky to prove (and require special care for the reducible case, too).</p>
+
+
+
+<p class="wp-block-paragraph">Since I haven&#8217;t written it before, here&#8217;s a proof that (i) and (ii) imply (iii).</p>
+
+
+
+<p class="wp-block-paragraph"><strong>Corollary.</strong> Assume P irreducible, E&#8217; finite, <code>f : E -&gt; E'</code>. Then</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+D_TVD(P_{f(X)f(Y)}, Phat_{f(X)f(Y)}) &lt;= 2 (Phat&#91;f(X) = f(Y)] - P&#91;f(X) = f(Y)])
+</pre></div>
+
+
+<p class="wp-block-paragraph"><strong>Proof.</strong> Let <code>F = {f^{-1}({x}) : x in E}</code>, so F is a partition of E. Then</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+D_TVD(P_{f(X)f(Y), Phat_{f(X)f(Y)})
+= sum_{S,T in F} max{0, Phat(S,T) - P(S,T)}
+= sum_{S in F} max{0, Phat(S,S) - P(S,S)} + sum_{S,T in F, S != T} max{0, Phat(S,T) - P(S,T)}
+&lt;= 2 sum_{S in F} (Phat(S,S) - P(S,S))
+</pre></div>
+
+
+<p class="wp-block-paragraph">where the first term used (i) for equality and the second term used (ii) for inequality. <strong>[]</strong></p>
+
+
+
+<p class="wp-block-paragraph">As for where to put each property:</p>
+
+
+
+<ul class="wp-block-list">
+<li>(i) and (ii) would be put in a theorem in the main body.</li>
+
+
+
+<li>(vi) would be either put near the proof of SMC-BN, or, if I mention it in the abstract, in the main body. (I guess it&#8217;s strange that I&#8217;m waffling between this result being minor enough to bury in an appendix versus it being notable enough to go in the abstract!)</li>
+</ul>
+
+
+
+<p class="wp-block-paragraph">We can concisely express all the important properties of the MRC algorithm&#8217;s induced coupling by:</p>
+
+
+
+<p class="wp-block-paragraph"><strong>Theorem.</strong> Let Phat be the coupling sampled by the MRC algorithm applied to P. Then:</p>
+
+
+
+<ul class="wp-block-list">
+<li>Phat is a maximal coupling.</li>
+
+
+
+<li>For all S, <code>Phat(S,S) &gt;= P(S,S)</code>.</li>
+
+
+
+<li>For every partition F of E,</li>
+</ul>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+sum_{S in F} (Phat(S,S) - P(S,S)) &gt;= sum_{S,T in F, S != T} max{0, Phat(S,T) - P(S,T)}
+</pre></div>
+
+
+<p class="wp-block-paragraph">That maximal subcouplings remain maximal is a trivial corollary of the second property. The third property isn&#8217;t needed by any downstream application, but it&#8217;s interesting.</p>
+
+
+
+<p class="wp-block-paragraph">The other important property of the MRC algorithm is its efficiency, namely that it doesn&#8217;t sample the original coupling too much.</p>
+
+
+
+<p class="wp-block-paragraph"><strong>Theorem.</strong> If a collection of generations from <code>Phat_{Y|X}</code> satisfy, for all x,</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+E&#91;number of generations from Phat_{Y|X=x}] &lt;= P_X(x)
+</pre></div>
+
+
+<p class="wp-block-paragraph">then generations from <code>P_{Y|X}</code> satisfy, for all x,</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+E&#91;generations from P_{Y|X=x}] &lt;= P_X(x).
+</pre></div>
+
+
+<p class="wp-block-paragraph">The unconditional sampling case can be stated more simply:</p>
+
+
+
+<p class="wp-block-paragraph"><strong>Theorem.</strong> During one generation from <code>Phat_{XY}</code>,</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+E&#91;number of generations from P_{XY}] &lt;= 1.
+</pre></div>

@@ -1,0 +1,6 @@
+
+<p class="wp-block-paragraph">For two token probability distributions <code>p</code> and <code>q</code>, speculative sampling resamples with probability <code>(1/2) ||p - q||_1</code>. So, for <code>X ~ p</code> and <code>Y ~ q</code>, <code>P[X != Y] = (1/2) ||p - q||_1</code>. In this post, I sketch the proof that this is the minimum possible.</p>
+
+
+
+<p class="wp-block-paragraph">Observe the bound<br> <code> P[X = Y] = sum_x P[X = x /\ Y = x] &lt;= sum_x min { p(x), q(x) }</code>.<br>So<br> <code> P[X != Y] &gt;= 1 - sum_x min { p(x), q(x) }</code>.<br>Then some algebra, using the fact <code>(1/2)(a + b) - min{a, b} = (1/2)|a - b|</code>, proves the result.</p>

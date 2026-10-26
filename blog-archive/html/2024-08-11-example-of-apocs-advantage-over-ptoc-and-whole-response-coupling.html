@@ -1,0 +1,61 @@
+
+<p class="wp-block-paragraph">The key idea of APOC is that all-prefix-optimal coupling is possible. More specifically, that means the first token and the whole response can be simultaneously optimally coupled. The example in this post shows that weaker coupling methods don&#8217;t necessarily achieve this.</p>
+
+
+
+<p class="wp-block-paragraph">Here&#8217;s an example where PTOC (which always optimally couples the first token) does not optimally couple the whole response, and optimal whole-response coupling does not necessarily optimally couple the first token.</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+X ~
+    AA wp 1/5
+    AB wp 2/5
+    BB wp 2/5
+Y ~
+    AA wp 2/5
+    BA wp 2/5
+    BB wp 1/5
+</pre></div>
+
+
+<p class="wp-block-paragraph">The first token distribution is</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+X_0 ~
+    A wp 3/5
+    B wp 2/5
+Y_0 ~
+    A wp 2/5
+    B wp 3/5
+</pre></div>
+
+
+<ul class="wp-block-list">
+<li>The first token optimal equality probability: 2/5 + 2/5 = 4/5.</li>
+
+
+
+<li>The whole-response optimal equality probability: 1/5 + 1/5 = 2/5.</li>
+
+
+
+<li>The whole-response equality probability achieved by PTOC: (2/5)(1/3) + (2/5)(1/3) = 4/15.</li>
+</ul>
+
+
+
+<p class="wp-block-paragraph">That shows that PTOC doesn&#8217;t optimally couple the whole response. To see that optimal whole-response coupling doesn&#8217;t necessarily optimally couple the first token, first observe the residual probabilities:</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+X residual:
+    AB wp 2/5
+    BB wp 1/5
+Y residual:
+    AA wp 1/5
+    BA wp 2/5
+</pre></div>
+
+
+<p class="wp-block-paragraph">For example, if these are sampled independently, then the first token won&#8217;t be optimally coupled.</p>

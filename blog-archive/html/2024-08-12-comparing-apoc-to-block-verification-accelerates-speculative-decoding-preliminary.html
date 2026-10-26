@@ -1,0 +1,38 @@
+
+<p class="wp-block-paragraph">While browsing speculative decoding papers today, I came across <a href="https://arxiv.org/abs/2403.10444">&#8220;Block Verification Accelerates Speculative Decoding&#8221; (Sun et al. 2024)</a> from Google Research. This preprint contains the key ideas of all-prefix-optimal coupling (APOC), so here are my preliminary thoughts based on skimming (so errors are likely). More specifically, there are two versions of the preprint:</p>
+
+
+
+<ul class="wp-block-list">
+<li>2024-03-15: In this version, their main algorithmic result is <code>BlockVerify</code>, which is essentially the same as what I&#8217;ve been calling APOC conditional sampling.</li>
+
+
+
+<li>2024-07-25: In this version, the original algorithm has been renamed &#8220;greedy block verification&#8221; and demoted to Appendix C, since they present an alternative new algorithm &#8220;block verification&#8221;, which avoids creating a residual model, that reportedly has fewer mispredicts in empirical testing.</li>
+</ul>
+
+
+
+<p class="wp-block-paragraph">The situation makes me wish that I found a better way to broadcast my work, but likely the Google team was ahead at all points. While <a href="https://masharpe.wordpress.com/2024/03/05/all-prefix-optimal-coupling-for-model-comparison/">my first blog post on APOC was posted 2024-03-05</a>, a few days before the March preprint was uploaded to arXiv, that blog post was much less well-developed in terms of material. In particular, at that point I only had a sketch of the unconditional sampling algorithm, and I hadn&#8217;t yet worked out the conditional sampling algorithm (which is trickier).</p>
+
+
+
+<p class="wp-block-paragraph">In the particular case of being able to efficiently apply APOC to speculative decoding, they were far ahead of me, since I only this morning realized that the draft model can be cheaply coupled to the residual model (since forward pass results of the draft model can be reused). That observation already appears in the March preprint:</p>
+
+
+
+<blockquote class="wp-block-quote is-layout-flow wp-block-quote-is-layout-flow">
+<p class="wp-block-paragraph">This doesn’t increase the number of calls to the large model and small model.</p>
+</blockquote>
+
+
+
+<p class="wp-block-paragraph">A more minor observation is that the motivating example they present in Section 2 of the July version <a href="https://masharpe.wordpress.com/2024/06/27/two-useful-simple-counterexamples-of-string-coupling/">is also an example I&#8217;ve found useful</a>.</p>
+
+
+
+<p class="wp-block-paragraph">Although the key ideas of APOC are certainly in their preprints, more reading will be needed to understand the differences in detail. Thematically, I&#8217;ve been primarily interested in the application of APOC to comparing response distributions, whereas they restrict their attention solely to speculative decoding. That has likely led me to different minor results than theirs. However, the most interesting result is definitely APOC itself, so it&#8217;s disappointing to be scooped.</p>
+
+
+
+<p class="wp-block-paragraph">Still, despite my disappointment, I&#8217;m glad that the idea is out there being helpful. After all, I was making only slow progress on broadcasting it myself, and I wasn&#8217;t focused on speculative decoding. <a href="https://huggingface.co/spaces/masharpe/all-prefix-optimal-coupling-demo-1">For example, my demo currently only supports prompt engineering.</a></p>

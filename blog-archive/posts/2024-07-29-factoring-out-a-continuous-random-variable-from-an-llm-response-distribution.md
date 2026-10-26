@@ -1,0 +1,46 @@
+---
+title: "Factoring out a continuous random variable from an LLM response distribution"
+date: 2024-07-29T23:27:19+00:00
+modified: 2024-07-29T23:27:19+00:00
+url: https://masharpe.wordpress.com/2024/07/29/factoring-out-a-continuous-random-variable-from-an-llm-response-distribution/
+tags: ["coupling", "llm", "probability", "research", "sampling"]
+categories: ["Uncategorized"]
+archive_note: related post not in the author's core list
+---
+
+# Factoring out a continuous random variable from an LLM response distribution
+
+Suppose we want to know whether FP8 quantization changes the response length distribution of Llama 3.1 405B. The simplest approach is to sample n responses from the full-precision model and n responses from the FP8 model, then compare the empirical response length distributions. But this includes randomness that obscures the effect of the quantization, forcing us to draw a large sample, which may be expensive since the model is large.
+
+So we’d like to get more information from n generations from each model, which suggests using a variance reduction technique. [I previously experimented with using APOC to reduce the variance of response length difference, which was mildly effective](2024-07-07-preliminary-experiment-apoc-for-variance-reduction.md), but better may be possible.
+
+## Oracle solution
+
+Theoretically, minimizing the variance of response length difference is equivalent to maximizing the covariance of response length. It’s well-known that, to couple two continuous random variables to maximize their covariance, you first sample a quantile uniformly in [0,1), then apply the respective probability point functions (PPFs).
+
+(Since response length is integer-valued, we’ll transform it into a continuous RV by adding a uniformly random fractional part.)
+
+Assuming we have an oracle for the response length distribution of a completion of a given prefix, the optimal coupling of the response lengths suggests a coupling method for the responses:
+
+1. Query the oracle to get the response length distributions.
+2. Sample them using the optimal coupling.
+3. Then sample from each response distribution, conditioned on the previously sampled response length.
+
+## Adapting to an imperfect predictor
+
+In reality, we don’t have an oracle, but we may have an imperfect predictor of the response length distribution. For example, we could train a model to predict response length given a prefix. (Such models are also of interest for constrained generation, so there may be methods for it already.) Then we must adapt the method to handle the imperfection.
+
+The first two steps work the same, just with the predicted distribution instead of the true distribution. The conditional sampling of the response works differently, however. Let X be the RV giving the response length.
+
+Assume we’ve already sampled a prefix a. There are two ways to estimate a distribution of X: run the predictor on a, or use the mixture distribution obtained by running the predictor over all possible next tokens, appended to a. If the predictor were perfect, these two estimates would be the same, but generally they will not be, so the question is how to make them compatible.
+
+To reconcile the unmixed distribution and mixed distribution, use the covariance-maximizing coupling. That tells us how to translate our previous target value for X into a new target value for X. That new target value is thus a valid sample from the mixed distribution.
+
+Once we have the new target value for X, we must sample a next token. That sampling, of the next token, is conditioned on the new target value for X.
+
+## Remarks
+
+- The above trick has an interesting property: it encourages errors to cancel out. Sometimes errors will cause the target value will increase, and sometimes it will decrease.
+- For binary-valued RVs, the covariance-maximizing coupling and equality-maximizing coupling are the same, so the method is also effective for those.
+- The method does not apply to categorical RVs, which will need a different approach to the coupling of unmixed and mixed distributions.
+- The conditional response samples may also be coupled, for example by APOC. By doing so, we achieve zero variance in the limit of equal response distributions.

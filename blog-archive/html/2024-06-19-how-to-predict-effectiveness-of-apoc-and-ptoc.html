@@ -1,0 +1,69 @@
+
+<p class="wp-block-paragraph">Suppose we want to empirically compare the effectiveness of APOC against baselines, such as PTOC, PTCRN methods (including ad hoc seed reuse), and independent generation. Assume the metric we&#8217;re computing is the longest-common-prefix survival function (LCP SF).</p>
+
+
+
+<p class="wp-block-paragraph">The simplest way to estimate the LCP SF is to generate using each method repeatedly and aggregate the results to obtain an empirical distribution. For ad hoc seed reuse, this may be the only option, if the generation is a black box, which is the case for proprietary APIs.</p>
+
+
+
+<p class="wp-block-paragraph">For other methods (including APOC, PTOC, certain PTCRN methods, and independent generation), though, we can estimate the LCP SF without fully generating a pair of responses. Estimating without generation has two advantages:</p>
+
+
+
+<ul class="wp-block-list">
+<li>Estimating the LCP SF may be simpler than sampling a pair of responses. This is particularly true for APOC, which has a tricky implementation, but where estimating the LCP SF is easy.</li>
+
+
+
+<li>Variance reduction techniques can increase the accuracy of our estimate.</li>
+</ul>
+
+
+
+<p class="wp-block-paragraph">The particular variance reduction technique we&#8217;ll use is &#8220;conditional Monte Carlo&#8221; (see Rubinstein and Kroese 2008). For a given threshold i, observe that</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+P&#91;LCP(X,Y) &gt;= i]
+    = P&#91;X_{&lt;i} = Y_{&lt;i}]
+    = E_{a ~ X}&#91; P&#91;Y_{&lt;i} = a_{&lt;i} | X_{&lt;i} = a_{&lt;i}] ]
+</pre></div>
+
+
+<p class="wp-block-paragraph">The inner probability can be computed exactly for many coupling methods. For APOC:</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+P&#91;Y_{&lt;i} = a_{&lt;i} | X_{&lt;i} = a_{&lt;i}]
+    = min{1, P&#91;Y_{&lt;i} = a_{&lt;i}] / P&#91;X_{&lt;i} = a_{&lt;i}]}
+</pre></div>
+
+
+<p class="wp-block-paragraph">For PTOC:</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+P&#91;Y_{&lt;i} = a_{&lt;i} | X_{&lt;i} = a_{&lt;i}]
+    = prod_{j&lt;i} min{1, P&#91;Y_j = a_j | Y_{&lt;j} = a_{&lt;j}] / P&#91;X_j = a_j | X_{&lt;j} = a_{&lt;j}]}
+</pre></div>
+
+
+<p class="wp-block-paragraph">For independent generation:</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+P&#91;Y_{&lt;i} = a_{&lt;i} | X_{&lt;i} = a_{&lt;i}]
+    = P&#91;Y_{&lt;i} = a_{&lt;i}]
+</pre></div>
+
+
+<p class="wp-block-paragraph">(Note: There is an additional minor opportunity for further variance reduction, which is to handle the token at position <code>i-1</code> specially, since the LLM forward pass gives us its full distribution. I have not yet made use of this extra trick, since it increases implementation difficulty.)</p>
+
+
+
+<p class="wp-block-paragraph">Something interesting about these formulas for the inner probability is that the formulas for independent generation and PTOC are monotone down as functions of i, but APOC&#8217;s formula is not. That means the estimates of APOC&#8217;s LCP SF may not be monotone, even though obviously the exact LCP SF must be.</p>
+
+
+
+<p class="wp-block-paragraph">For example results, <a href="https://masharpe.wordpress.com/2024/06/04/apoc-will-substantially-outperform-ptc-on-nf8-quant-preliminary-experiment/">see a previous post</a>, showing a preliminary experiment estimating the longest-common-prefix survival function (LCP SF) for APOC and PTOC.</p>

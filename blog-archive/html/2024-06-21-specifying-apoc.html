@@ -1,0 +1,120 @@
+
+<p class="wp-block-paragraph">Before describing algorithms to sample from APOC, it is helpful to specify it precisely.</p>
+
+
+
+<h1 class="wp-block-heading">Specification via optimality and conditional independence</h1>
+
+
+
+<p class="wp-block-paragraph">This first way to specify APOC makes optimality clear.</p>
+
+
+
+<p class="wp-block-paragraph">We first require that APOC satisfies the <a href="https://masharpe.wordpress.com/2024/06/19/all-prefix-optimality-property-of-string-coupling/">all-prefix-optimality property</a>: for every sequence a and for every index i,</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+P&#91;X_{&lt;i} = Y_{&lt;i} = a_{&lt;i}] = min{ P&#91;X_{&lt;i} = a_{&lt;i}], P&#91;Y_{&lt;i} = a_{&lt;i}] }
+</pre></div>
+
+
+<p class="wp-block-paragraph">To specify a unique coupling, we additionally require the following conditional independence property: for all sequences a and b and for every index i,</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+(X_i = a_i ⫫ Y_{&lt;=i} = b_{&lt;=i} | X_{&lt;i} = a_{&lt;i} /\ X_{&lt;=i} != Y_{&lt;=i})
+</pre></div>
+
+
+<p class="wp-block-paragraph">We also require the symmetric property (i.e. exchanging X with Y and a with b):</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+(Y_i = b_i ⫫ X_{&lt;=i} = a_{&lt;=i} | Y_{&lt;i} = b_{&lt;i} /\ X_{&lt;=i} != Y_{&lt;=i})
+</pre></div>
+
+
+<h1 class="wp-block-heading">Implementation-friendly specification</h1>
+
+
+
+<p class="wp-block-paragraph">This second way to specify APOC informs implementation of sampling.</p>
+
+
+
+<p class="wp-block-paragraph">Equality case: for every sequence a and index i,</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+P&#91;X_i = Y_i = a_i | X_{&lt;i} = Y_{&lt;i} = a_{&lt;i}]
+    = min{ P&#91;X_{&lt;=i} = a_{&lt;=i}], P&#91;Y_{&lt;=i} = a_{&lt;=i}] }
+      / min{ P&#91;X_{&lt;i} = a_{&lt;i}], P&#91;Y_{&lt;i} = a_{&lt;i}] }
+</pre></div>
+
+
+<p class="wp-block-paragraph">Non-equality case: for all sequences a and b and for every index i,</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+P&#91;X_i = a_i /\ Y_i = b_i | X_{&lt;i} = a_{&lt;i} /\ Y_{&lt;i} = b_{&lt;i} /\ X_{&lt;=i} != Y_{&lt;=i}]
+=   P&#91;X_i = a_i | X_{&lt;i} = a_{&lt;i} /\ X_{&lt;=i} != Y_{&lt;=i}]
+  * P&#91;Y_i = b_i | Y_{&lt;i} = b_{&lt;i} /\ X_{&lt;=i} != Y_{&lt;=i}]
+</pre></div>
+
+
+<p class="wp-block-paragraph">The factors are then given (proportionally, since it&#8217;s convenient to omit the normalizing constant) by</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+P&#91;X_i = a_i | X_{&lt;i} = a_{&lt;i} /\ X_{&lt;=i} != Y_{&lt;=i}] ∝ max{0, P&#91;X_{&lt;=i} = a_{&lt;=i}] - P&#91;Y_{&lt;=i} = a_{&lt;=i}]}
+</pre></div>
+
+
+<p class="wp-block-paragraph">and symmetrically</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+P&#91;Y_i = b_i | Y_{&lt;i} = b_{&lt;i} /\ X_{&lt;=i} != Y_{&lt;=i}] ∝ max{0, P&#91;Y_{&lt;=i} = b_{&lt;=i}] - P&#91;X_{&lt;=i} = b_{&lt;=i}]}
+</pre></div>
+
+
+<p class="wp-block-paragraph">The normalizing constants are obtained by summing over a_i (for the first formula) and b_i (for the second formula).</p>
+
+
+
+<h1 class="wp-block-heading">Deriving the implementation version</h1>
+
+
+
+<p class="wp-block-paragraph">We can derive the implementation-friendly specification from the one stated in terms of optimality and conditional independence.</p>
+
+
+
+<p class="wp-block-paragraph">The all-prefix-optimality property alone gives the equality case and the formulas for the factors in the non-equality case.</p>
+
+
+
+<p class="wp-block-paragraph">The conditional independence properties are used to factorize the non-equality case. This is tricky, so here is some more detail: for all sequences a and b and for every index i,</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+P&#91;X_i = a_i /\ Y_i = b_i | X_{&lt;i} = a_{&lt;i} /\ Y_{&lt;i} = b_{&lt;i} /\ X_{&lt;=i} != Y_{&lt;=i}]
+=   P&#91;X_i = a_i | X_{&lt;i} = a_{&lt;i} /\ Y_{&lt;=i} = b_{&lt;=i} /\ X_{&lt;=i} != Y_{&lt;=i}]
+  * P&#91;Y_i = b_i | X_{&lt;i} = a_{&lt;i} /\ Y_{&lt;i} = b_{&lt;i} /\ X_{&lt;=i} != Y_{&lt;=i}]
+</pre></div>
+
+
+<p class="wp-block-paragraph">by the chain rule.</p>
+
+
+
+<p class="wp-block-paragraph">We can apply the conditional independence property to the first factor directly, but the second factor requires special handling. We must apply the law of total probability over possible values for a_i, and within the sum we can use conditional independence:</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+P&#91;Y_i = b_i | X_{&lt;i} = a_{&lt;i} /\ Y_{&lt;i} = b_{&lt;i} /\ X_{&lt;=i} != Y_{&lt;=i}]
+    = sum_{a_i} P&#91;Y_i = b_i | X_{&lt;=i} = a_{&lt;=i} /\ Y_{&lt;i} = b_{&lt;i} /\ X_{&lt;=i} != Y_{&lt;=i}]
+                * P&#91;X_i = a_i | X_{&lt;i} = a_{&lt;i} /\ Y_{&lt;i} = b_{&lt;i} /\ X_{&lt;=i} != Y_{&lt;=i}]
+    = P&#91;Y_i = b_i | Y_{&lt;i} = b_{&lt;i} /\ X_{&lt;=i} != Y_{&lt;=i}]
+</pre></div>

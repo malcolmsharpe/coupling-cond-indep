@@ -1,0 +1,82 @@
+
+<p class="wp-block-paragraph">Two discrete distributions over the same finite set can be coupled so as to simultaneously maximize the probability of coinciding on every element. (See, for example, <a href="https://arxiv.org/abs/1903.00632">Angel and Spinka 2021</a>.) If the finite set consists of strings, then we can choose the coupling to also simultaneously maximize the probability of coinciding on every prefix value. We&#8217;ll call this latter simultaneous maximization property &#8220;all-prefix optimality&#8221;. It&#8217;s what APOC is constructed to achieve.</p>
+
+
+
+<p class="wp-block-paragraph">I discussed the all-prefix-optimality property in <a href="https://masharpe.wordpress.com/2024/03/05/all-prefix-optimal-coupling-for-model-comparison/">my first post on APOC</a>, so consider this a revisiting with the notation I prefer now.</p>
+
+
+
+<h1 class="wp-block-heading">Optimal coupling (general elements)</h1>
+
+
+
+<p class="wp-block-paragraph">If X and Y are two random variables with different distributions over the same finite set, then for every element a of the set, we obviously have the upper bound</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+P&#91;X = Y = a] &lt;= min{P&#91;X = a], P&#91;Y = a]}
+</pre></div>
+
+
+<p class="wp-block-paragraph">Less obvious is that there exists a coupling such that, for every a, the upper bound is achieved:</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+P&#91;X = Y = a] = min{P&#91;X = a], P&#91;Y = a]}
+</pre></div>
+
+
+<p class="wp-block-paragraph">Note that this coupling is in general non-unique.</p>
+
+
+
+<p class="wp-block-paragraph">This optimal coupling is used implicitly by speculative sampling for LLMs.</p>
+
+
+
+<h1 class="wp-block-heading">All-prefix-optimality property</h1>
+
+
+
+<p class="wp-block-paragraph">Now assume that the finite set consists of strings. For every string a in the set and length i, we obviously have the upper bound</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+P&#91;X_{&lt;i} = Y_{&lt;i} = a_{&lt;i}] &lt;= min{P&#91;X_{&lt;i} = a_{&lt;i}], P&#91;Y_{&lt;i} = a_{&lt;i}]}
+</pre></div>
+
+
+<p class="wp-block-paragraph">Surprisingly, there again exists a coupling that, for every a and i, achieves the upper bound:</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+P&#91;X_{&lt;i} = Y_{&lt;i} = a_{&lt;i}] = min{P&#91;X_{&lt;i} = a_{&lt;i}], P&#91;Y_{&lt;i} = a_{&lt;i}]}
+</pre></div>
+
+
+<p class="wp-block-paragraph">Again, this all-prefix-optimal coupling is in general non-unique.</p>
+
+
+
+<p class="wp-block-paragraph">As far as I can tell, my posts on this blog are the first public description of all-prefix-optimal coupling.</p>
+
+
+
+<h1 class="wp-block-heading">Discussion</h1>
+
+
+
+<p class="wp-block-paragraph">If indeed all-prefix-optimal coupling was only recently discovered, why wasn&#8217;t it discovered earlier? The math involved is extremely elementary, and the result strikes me as at least a little interesting in isolation, even ignoring that it has applications to generative AI.</p>
+
+
+
+<p class="wp-block-paragraph">My guess is that, although the problem makes no explicit reference to GenAI, it didn&#8217;t arise naturally in the pre-GenAI era. If it weren&#8217;t for GenAI, you&#8217;d be unlikely to be sampling from string distributions, and, even if you were, the sampling might not proceed auto-regressively. Even once sampling auto-regressively from string distributions, for APOC to be useful, you additionally need those two distributions to be close to equal, which occurs in GenAI for many reasons (e.g. quantization, fine-tuning, prompt engineering, sampler configuration), but maybe it doesn&#8217;t appear elsewhere much.</p>
+
+
+
+<p class="wp-block-paragraph">Interestingly, even within the field of LLMs, I haven&#8217;t seen much public discussion of using coupled responses to compare models. A rare example is <a href="https://github.com/Artefact2/llm-eval">Artefact2&#8217;s comparison of quantizations by reusing a seed</a>.</p>
+
+
+
+<p class="wp-block-paragraph">It also remains possible that APOC actually doesn&#8217;t work. This will only be truly settled once I&#8217;ve created an implementation and compared its performance to the theoretical prediction.</p>

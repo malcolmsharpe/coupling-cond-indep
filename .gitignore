@@ -1,0 +1,20 @@
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# LaTeX build artifacts (paper.pdf itself is tracked)
+*.aux
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.toc
+*.synctex.gz
+*.bbl
+*.bcf
+*.blg
+*.run.xml

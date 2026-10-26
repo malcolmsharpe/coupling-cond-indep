@@ -1,0 +1,1510 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1.1in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{mathtools}
+\usepackage{enumitem}
+\usepackage{algorithm}
+\usepackage[noend]{algpseudocode}
+\usepackage[hidelinks]{hyperref}
+\usepackage[capitalize,noabbrev]{cleveref}
+\usepackage{booktabs}
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{example}[theorem]{Example}
+\newtheorem{remark}[theorem]{Remark}
+\newtheorem{openproblem}[theorem]{Open problem}
+
+\crefname{openproblem}{open problem}{open problems}
+
+\newcommand{\pX}{p_X}
+\newcommand{\pY}{p_Y}
+\newcommand{\hP}{\hat P}
+\newcommand{\TV}{d_{\mathrm{TV}}}
+\newcommand{\pmax}{p_{\max}}
+\newcommand{\Ep}{E_{+}}
+\newcommand{\Em}{E_{-}}
+\newcommand{\pos}[1]{\left(#1\right)^{+}}
+\newcommand{\one}{\mathbf{1}}
+\newcommand{\MRC}{\textnormal{\textsc{mrc}}}
+\newcommand{\An}{\operatorname{An}}
+\newcommand{\Var}{V}
+\newcommand{\F}{\mathcal{F}}
+\renewcommand{\Pr}{\mathbb{P}}
+\newcommand{\Ex}{\mathbb{E}}
+
+\algnewcommand\algorithmicinput{\textbf{Input:}}
+\algnewcommand\Input{\item[\algorithmicinput]}
+\algnewcommand\algorithmicaccess{\textbf{Access:}}
+\algnewcommand\Access{\item[\algorithmicaccess]}
+
+\title{Maximal recoupling, and simultaneously maximal coupling\\ under independence constraints}
+\author{Research by Malcolm Sharpe (2024)\\[2pt]
+\small Written up from the research notes in October 2026 with AI assistance; see \cref{sec:provenance}.}
+\date{October 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Given a joint distribution of two random variables $X$ and $Y$ on a finite set,
+the classic maximal coupling algorithm samples a new joint distribution that
+keeps both marginals and maximizes $\Pr[X=Y]$. It discards the structure of
+the original joint, and in particular it destroys subcouplings that were
+already maximal. We present \emph{maximal recoupling} (\MRC{}), a small
+generalization of the classic rejection-sampling algorithm. \MRC{} turns an
+arbitrary coupling into a maximal one, and every coarsening $(f(X),f(Y))$ that
+was maximally coupled before comes out with exactly the same joint law. More
+quantitatively, \MRC{} never decreases $\Pr[f(X)=f(Y)]$, and it moves the law of
+$(f(X),f(Y))$ by at most twice the improvement in total variation. \MRC{} needs
+only likelihoods of the two marginals and a conditional sampler for the original
+coupling, and it makes at most one expected call to that sampler per sample. We
+give a closed form for its output and a decomposition of its effect into
+shortcut random-walk trajectories.
+
+As the application, we study \emph{simultaneously maximal coupling}: coupling
+$X=(X_i)_{i\in V}$ and $Y=(Y_i)_{i\in V}$ so that $X_S$ and $Y_S$ are maximally
+coupled for every $S$ in a family $\F$. Assume every coordinate takes at least
+two values. Without further assumptions this is possible for all distributions
+exactly when $\F$ is a chain. This nested case is known and
+underlies block verification in speculative decoding. If the coordinates of $X$
+are independent and so are those of $Y$, it is possible exactly when $\F$ is
+laminar. If $X$ and $Y$ are Bayesian networks on a common DAG, it is possible
+exactly when $\F$ is laminar and its disjoint members have disjoint ancestor
+sets. The constructive direction is an efficient sampling algorithm on
+\emph{chain-product trees}, built from \MRC{}. In the autoregressive special case
+it reproduces the known all-prefix maximal coupling.
+\end{abstract}
+
+\tableofcontents
+
+%======================================================================
+\section{Introduction}
+%======================================================================
+
+A \emph{coupling} of two distributions $\mu$ and $\nu$ is a joint distribution of a
+pair $(X,Y)$ with $X\sim\mu$ and $Y\sim\nu$. The coupling inequality says
+$\Pr[X\neq Y]\ge \TV(\mu,\nu)$, and a coupling that achieves equality is called
+\emph{maximal}. Maximal couplings go back to Doeblin~\cite{lindvall1991doeblin}.
+There is a classic rejection-sampling algorithm for drawing from one using only
+samplers and likelihoods for $\mu$ and $\nu$ \cite{johnson1998coupling}.
+
+The same algorithm, in disguise, is the token-level verification step of
+speculative decoding for large language models
+\cite{leviathan2023fast,chen2023accelerating,sun2023spectr}. This research
+started from a related use of coupling: comparing two generative models (for
+example, a model and its quantization) by generating from them jointly so that
+their responses agree as often as possible. Unforced differences then stand out
+against a background of shared randomness. Two observations drive the rest:
+\begin{itemize}
+  \item Coupling each next-token distribution maximally (``per-token optimal
+  coupling'') does not maximally couple whole responses, or even prefixes of
+  responses (\cref{sec:autoregressive}). It \emph{is} possible to couple every
+  prefix maximally at once. This was found independently by the author and,
+  earlier and in other contexts, by others
+  \cite{vollering2016maximal,ernst2019mexit,sun2024block}.
+  \item Generative models whose sampling involves conditionally independent
+  choices, such as discrete-diffusion language models that unmask several
+  positions independently in one step \cite{lou2024discrete}, raise a more
+  general question: which families of subsets of the coordinates can be
+  maximally coupled \emph{simultaneously}, and how do we sample from such a
+  coupling?
+\end{itemize}
+
+\paragraph{Contributions.}
+\begin{enumerate}
+  \item \textbf{Maximal recoupling (\cref{sec:mrc,sec:mrc-proofs}).} \MRC{}
+  (\cref{alg:mrc}) has the same two-line shape as the classic algorithm. The
+  difference is that the ``try again'' draws from $Y$ are replaced by a random
+  walk along the conditional law $P(Y\mid X)$ of the input coupling.
+  \Cref{thm:mrc} proves that the output is a maximal coupling, preserves every
+  maximal coarsening exactly, never decreases the agreement probability of any
+  coarsening, and costs at most one expected call to $P(Y\mid X)$ per sample.
+  The cost bound propagates through nested use. If inputs arrive with expected
+  frequencies at most $\pX$, then the old sampler is called with expected
+  frequencies at most $\pX$, and outputs occur with expected frequencies at most
+  $\pY$. This is what lets \MRC{} be nested.
+  \Cref{prop:closed-form} gives the closed form. Every argument needed about
+  Markov chains is elementary and confined to one structural lemma
+  (\cref{lem:structure,lem:walk}).
+  \item \textbf{Simultaneously maximal coupling on chain-product trees
+  (\cref{sec:cpt}).} A chain-product tree (CPT) describes a distribution built
+  from atomic variables by chain-rule extensions and independent products. The
+  SMC-CPT algorithm applies \MRC{} at every node. Its output is maximal on the
+  scope of every node (\cref{thm:cpt}), and each $Y$-side oracle is called at
+  most once in expectation.
+  \item \textbf{Characterizations (\cref{sec:characterization}).} Under no
+  structural assumption, a family can be simultaneously maximally coupled for
+  all distributions iff it is a chain (\cref{thm:char-general}). Under
+  independence, iff it is laminar (\cref{thm:char-indep}). For Bayesian networks
+  on a DAG $G$, iff it is laminar and its disjoint members have disjoint
+  ancestor sets (\cref{thm:char-bn}). If every member is also an ancestral set,
+  the CPT oracles are just the network's conditional distributions
+  (\cref{cor:ancestral}).
+  \item \textbf{The autoregressive case (\cref{sec:autoregressive}).} On a pure
+  chain, SMC-CPT outputs exactly the ``all-prefix-optimal coupling'' (APOC)
+  defined by an explicit greedy formula (\cref{thm:apoc}). This settles a
+  conjecture from the notes. We also record that per-token maximal coupling
+  dominates every seed-reuse scheme prefix-by-prefix (\cref{prop:ptcrn}), along
+  with small examples.
+\end{enumerate}
+
+\paragraph{What is new?}
+The nested (chain) case is not new. It is the setting of maximal agreement
+couplings \cite{vollering2016maximal,ernst2019mexit} and of block verification
+in speculative decoding \cite{sun2024block}. Griffeath's and Goldstein's
+classical maximal couplings of processes \cite{griffeath1975maximal,goldstein1979maximal}
+handle the reverse nesting, of tail $\sigma$-fields. The author searched in
+2024 and did not find \MRC{} or the laminar and Bayesian-network results in the
+literature. A later search, done when this write-up was planned, also found
+nothing. Literature searches are never exhaustive, so treat novelty claims here
+as provisional.
+
+\paragraph{Reading guide.}
+\Cref{sec:prelim} fixes notation. \Cref{sec:mrc} states \MRC{} and its
+properties, and \cref{sec:mrc-proofs} proves them. \Cref{sec:cpt} gives the
+simultaneous construction and \cref{sec:characterization} the
+characterizations. \Cref{sec:autoregressive} treats autoregressive models.
+\Cref{sec:related,sec:open} cover related work and open problems.
+\Cref{app:glossary} maps the terminology of the original notes to the
+terminology used here, and \cref{app:pseudocode} gives implementation-level
+pseudocode.
+
+%======================================================================
+\section{Preliminaries}\label{sec:prelim}
+%======================================================================
+
+Throughout, $E$ is a finite set. A distribution $P$ on $E\times E$ is identified
+with the matrix $(P(x,y))_{x,y\in E}$. For $S,T\subseteq E$ we write
+$P(S,T)=\sum_{x\in S,\,y\in T}P(x,y)$. Its marginals are
+$\pX(x)=P(\{x\},E)$ and $\pY(y)=P(E,\{y\})$, and $(X,Y)\sim P$ denotes a random
+pair with law $P$. A \emph{coupling} of distributions $\mu,\nu$ on $E$ is a $P$
+with $\pX=\mu$ and $\pY=\nu$. We write $a^+=\max\{a,0\}$ and
+\[
+  \TV(\mu,\nu)=\sum_{x}\pos{\mu(x)-\nu(x)}=\max_{A\subseteq E}\bigl(\mu(A)-\nu(A)\bigr).
+\]
+We use the same formula for the distance between two distributions on
+$E\times E$.
+
+\begin{definition}[maximal coupling]
+A coupling $P$ is \emph{maximal} if $P(x,x)=\min\{\pX(x),\pY(x)\}$ for every $x\in E$.
+\end{definition}
+
+Since $P(x,x)\le\min\{\pX(x),\pY(x)\}$ always holds, and
+$\sum_x\min\{\pX(x),\pY(x)\}$ equals $1-\TV(\pX,\pY)$, a coupling is maximal iff
+$\Pr[X=Y]=1-\TV(\pX,\pY)$, the largest possible value.
+
+For a coupling $P$ define the \emph{sources}, \emph{sinks} and \emph{surpluses}
+\begin{gather*}
+  \Ep=\{x:\pX(x)>\pY(x)\},\qquad \Em=\{y:\pY(y)>\pX(y)\},\\
+  \alpha(x)=\pos{\pX(x)-\pY(x)},\qquad \beta(y)=\pos{\pY(y)-\pX(y)}.
+\end{gather*}
+Picture $P$ as a flow on the directed graph with an arc $x\to y$ of weight
+$P(x,y)$ for each pair with $P(x,y)>0$, self-loops included. A node's out-weight
+is $\pX$ and its in-weight is $\pY$. Sources have excess out-weight $\alpha$ and
+sinks excess in-weight $\beta$, and $\sum\alpha=\sum\beta=\TV(\pX,\pY)$.
+
+\begin{lemma}[local characterization]\label{lem:local}
+A coupling $P$ is maximal iff no $x\in E$ has both $P(x,E\setminus\{x\})>0$ and
+$P(E\setminus\{x\},x)>0$. If $P$ is maximal and $P(x,y)>0$ with $x\neq y$, then
+$x\in\Ep$ and $y\in\Em$.
+\end{lemma}
+\begin{proof}
+$P(x,E\setminus\{x\})=\pX(x)-P(x,x)$ and $P(E\setminus\{x\},x)=\pY(x)-P(x,x)$. Both
+are positive iff $P(x,x)<\min\{\pX(x),\pY(x)\}$. If $P$ is maximal and $P(x,y)>0$
+with $y\ne x$, then $P(x,E\setminus\{x\})>0$, so $P(E\setminus\{x\},x)=0$. Hence
+$P(x,x)=\pY(x)$ and $\pX(x)=\pY(x)+P(x,E\setminus\{x\})>\pY(x)$. The statement
+for $y$ is symmetric.
+\end{proof}
+
+\paragraph{Coarsenings.}
+For a map $f\colon E\to E'$, the \emph{coarsening} $P^f$ is the joint law of
+$(f(X),f(Y))$: $P^f(a,b)=P(f^{-1}(a),f^{-1}(b))$. It is a coupling of the
+pushforwards of $\pX$ and $\pY$. We say $P$ is \emph{maximal on $f$} if $P^f$
+is a maximal coupling. Equivalently, take the partition $\F_f$ of $E$ into the
+nonempty fibres of $f$. Then $P^f$ is the block matrix
+$(P(S,T))_{S,T\in\F_f}$ and $\Pr[f(X)=f(Y)]=\sum_{S\in\F_f}P(S,S)$. The main
+example is $E=\prod_{i\in\Var}E_i$ with $f$ the projection $x\mapsto x_S$ onto a
+subset of coordinates.
+
+\paragraph{Oracle model.}
+Algorithms access distributions only through oracles. A \emph{likelihood
+oracle} for $\mu$ returns $\mu(x)$ given $x$. A \emph{sampler} for $\mu$ returns
+an independent draw from $\mu$ on each call. A \emph{conditional sampler} for a
+coupling $P$ takes $v$ with $\pX(v)>0$ and returns an independent draw from
+$P(\cdot\mid v)=P(v,\cdot)/\pX(v)$, the conditional law of $Y$ given $X=v$. Each
+oracle call uses fresh randomness, independent of everything else. Coin flips
+``with probability $q$'' are free.
+
+\begin{algorithm}[t]
+\caption{Classic maximal coupling, conditional form (CMC-Cond)}\label{alg:cmc}
+\begin{algorithmic}[1]
+\Input $x$ with $\pX(x)>0$
+\Access likelihoods $\pX,\pY$; sampler for $\pY$
+\State with probability $\min\{1,\pY(x)/\pX(x)\}$: \Return $x$
+\Loop
+  \State draw $y\sim\pY$
+  \State with probability $\min\{1,\pX(y)/\pY(y)\}$: \textbf{continue}
+  \State \Return $y$ \Comment{reached with probability $\beta(y)/\pY(y)$}
+\EndLoop
+\end{algorithmic}
+\end{algorithm}
+
+Let $D=\TV(\pX,\pY)$. If $D=0$, CMC-Cond returns its input, and the coupling is
+the diagonal one. If $D>0$, drawing $x\sim\pX$ and then $y\gets$ CMC-Cond$(x)$
+(\cref{alg:cmc}) gives the maximal coupling
+$\min\{\pX(x),\pY(x)\}\one[x=y]+\alpha(x)\beta(y)/D$, and the returned residual
+$y$ is independent of $x$ \cite{johnson1998coupling,lindvall1992lectures}. Once
+entered, the loop makes $1/D$ draws in expectation. It is entered with
+probability $D$, so there is exactly one expected draw per sample.
+
+%======================================================================
+\section{Maximal recoupling}\label{sec:mrc}
+%======================================================================
+
+\begin{algorithm}[t]
+\caption{Maximal recoupling, conditional form ($\MRC$-Cond$_P$)}\label{alg:mrc}
+\begin{algorithmic}[1]
+\Input $x$ with $\pX(x)>0$
+\Access likelihoods $\pX,\pY$; conditional sampler for $P(\cdot\mid\cdot)$
+\State with probability $\min\{1,\pY(x)/\pX(x)\}$: \Return $x$
+\State $v\gets x$
+\Loop
+  \State draw $w\sim P(\cdot\mid v)$
+  \State with probability $\min\{1,\pX(w)/\pY(w)\}$: $v\gets w$; \textbf{continue}
+  \State \Return $w$ \Comment{reached with probability $\beta(w)/\pY(w)$}
+\EndLoop
+\end{algorithmic}
+\end{algorithm}
+
+\emph{Maximal recoupling} of a coupling $P$ draws $x\sim\pX$, then
+$y\gets\MRC\text{-Cond}_P(x)$ (\cref{alg:mrc}), and outputs $(x,y)$. We write
+$\hP=\MRC(P)$ for the law of the output and call it the \emph{recoupling} of $P$.
+The only change from \cref{alg:cmc} is in the loop: a fresh draw from $\pY$
+becomes a draw from $P(\cdot\mid v)$, where $v$ is the most recent rejected
+value. A rejected $Y$-value is thus reused as an $X$-value. The loop is a random
+walk that follows the flow $P$ from the source $x$ until it is absorbed at a
+sink.
+
+\begin{remark}[\MRC{} generalizes CMC]\label{rem:cmc}
+If $P=\pX\otimes\pY$ is the independent coupling, then $P(\cdot\mid v)=\pY$ for
+every $v$ and \cref{alg:mrc} is literally \cref{alg:cmc}.
+\end{remark}
+
+\begin{theorem}[properties of maximal recoupling]\label{thm:mrc}
+Let $P$ be a coupling on $E$ and $\hP=\MRC(P)$.
+\begin{enumerate}[label=(\alph*)]
+  \item\label{it:term} \textbf{Termination.} For every $x$ with $\pX(x)>0$,
+  $\MRC$-Cond$_P(x)$ terminates almost surely.
+  \item\label{it:coupling} \textbf{Validity.} $\hP$ is a coupling of $\pX$ and $\pY$.
+  \item\label{it:max} \textbf{Maximality.} $\hP$ is maximal, and $\hP(x,y)>0$ with $x\neq y$ implies $x\in\Ep$, $y\in\Em$.
+  \item\label{it:eff} \textbf{Efficiency.} Suppose $\MRC$-Cond$_P$ is invoked
+  a random, possibly adaptively chosen, number of times, and let $c(x)$ be the
+  expected number of invocations with input $x$. If $c(x)\le\lambda\,\pX(x)$
+  for all $x$, for some $\lambda\ge 0$, then for every $v$ the expected number
+  of calls to the conditional sampler with input $v$ is at most
+  $\lambda\,\pX(v)$, and for every $y$ the expected number of invocations that
+  return $y$ is at most $\lambda\,\pY(y)$. In particular, one run of $\MRC$
+  makes at most one expected call to the conditional sampler.
+  \item\label{it:diag} \textbf{Diagonal blocks do not shrink.} $\hP(S,S)\ge P(S,S)$ for every $S\subseteq E$.
+  \item\label{it:comp} \textbf{Off-diagonal gains are paid for.} For every partition $\F$ of $E$,
+  \[
+    \sum_{\substack{S,T\in\F\\ S\neq T}}\bigl(P(S,T)-\hP(S,T)\bigr)
+    \;\ge\;
+    \sum_{\substack{S,T\in\F\\ S\neq T}}\pos{\hP(S,T)-P(S,T)}.
+  \]
+\end{enumerate}
+\end{theorem}
+
+\begin{corollary}[effect on coarsenings]\label{cor:coarsen}
+Let $f\colon E\to E'$ and write $\gamma_f=\hP[f(X)=f(Y)]-P[f(X)=f(Y)]$. Then:
+\begin{enumerate}[label=(\roman*)]
+  \item\label{it:gain} $\gamma_f\ge 0$: recoupling never lowers the agreement probability of a coarsening.
+  \item\label{it:tv} $\TV(P^f,\hP^f)\le 2\gamma_f$.
+  \item\label{it:preserve} If $P$ is maximal on $f$, then $\hP^f=P^f$. In particular, $\hP$ is maximal on $f$.
+\end{enumerate}
+\end{corollary}
+
+Part \ref{it:preserve} applies to all maximal coarsenings of $P$ at once. That
+is what makes \MRC{} the right building block for simultaneous coupling
+(\cref{sec:cpt}). Part \ref{it:tv} is a quantitative version: a coarsening that
+was nearly maximal moves only a little. The constant $2$ is sharp
+(\cref{ex:tight2}).
+
+\begin{proposition}[closed form]\label{prop:closed-form}
+Let $\pmax(v)=\max\{\pX(v),\pY(v)\}$, and let $A$ be the $E\times E$ matrix
+\[
+  A_{vw}=\frac{P(v,w)}{\sqrt{\pmax(v)\,\pmax(w)}}\quad\text{if }\pmax(v)\pmax(w)>0,
+  \qquad A_{vw}=0\text{ otherwise}.
+\]
+Then $\hP(x,x)=\min\{\pX(x),\pY(x)\}$. For $x\neq y$, $\hP(x,y)=0$ unless
+$x\in\Ep$ and $y\in\Em$, in which case
+\[
+  \hP(x,y)=\frac{\alpha(x)\,\beta(y)}{\sqrt{\pX(x)\,\pY(y)}}\,\bigl[(I-A)^{+}\bigr]_{xy}
+          =\frac{\alpha(x)\,\beta(y)}{\sqrt{\pX(x)\,\pY(y)}}\sum_{n\ge1}(A^n)_{xy},
+\]
+where $(I-A)^{+}$ is the Moore--Penrose pseudoinverse and the series converges.
+If every node $v$ with $\pmax(v)>0$ can reach a sink in the flow graph of $P$
+(by a path of length $\ge0$), then $I-A$ is invertible and $(I-A)^+=(I-A)^{-1}$. In general $(I-A)^{+}$ may be replaced by
+$(I-A_R)^{-1}$, where $A_R$ is the restriction of $A$ to the set $R$ of nodes
+reachable from a source.
+\end{proposition}
+
+When $P=\pX\otimes\pY$, the sum is a geometric series with ratio
+$1-\TV(\pX,\pY)$, and the formula reduces to the CMC formula of
+\cref{sec:prelim}.
+
+\begin{corollary}[symmetry]\label{cor:symmetry}
+$\MRC(P^{\top})=\MRC(P)^{\top}$, where $P^\top(x,y)=P(y,x)$. Running \MRC{} with
+the roles of $X$ and $Y$ exchanged gives the transposed coupling.
+\end{corollary}
+\begin{proof}
+Transposing $P$ exchanges $\pX$ with $\pY$, $\alpha$ with $\beta$ and $\Ep$ with
+$\Em$, and replaces $A$ by $A^{\top}$. The formula of \cref{prop:closed-form} is
+invariant under these changes together with $(x,y)\mapsto(y,x)$, since
+$(A^\top)^n_{yx}=A^n_{xy}$.
+\end{proof}
+
+\subsection{Examples}
+
+\begin{example}[why recoupling: CMC destroys maximal subcouplings]\label{ex:why}
+Let $E=\{0,1\}^2$. Draw $X_1$ uniform, $X_2$ uniform and independent of $X_1$,
+and set $Y=(X_1,0)$. Then $(X_1,Y_1)$ is maximally coupled, since $X_1=Y_1$
+always. Applying CMC to the marginals of $X$ and $Y$ keeps $X=Y$ when $X_2=0$.
+When $X_2=1$, it draws the residual $Y\sim\mathrm{Unif}\{(0,0),(1,0)\}$
+independently of $X$, so $\Pr[X_1\neq Y_1]=1/4$. \MRC{} instead walks from
+$x=(x_1,1)$ to $w\sim P(\cdot\mid x)=\delta_{(x_1,0)}$, which is a sink, and
+returns it. So $X_1=Y_1$ is preserved, as \cref{cor:coarsen}\ref{it:preserve}
+promises.
+\end{example}
+
+\begin{example}[the constant $2$ is sharp]\label{ex:tight2}
+Let $P$ be uniform on $\{(a,b),(c,a)\}$, so $X\sim\mathrm{Unif}\{a,c\}$ and
+$Y\sim\mathrm{Unif}\{a,b\}$. The unique maximal coupling is uniform on
+$\{(a,a),(c,b)\}$, and \MRC{} produces it: from the source $c$ it walks to $a$,
+continues, walks to $b$, and stops. With $f=\mathrm{id}$,
+$\TV(P,\hP)=1$ and $\gamma_f=1/2$.
+\end{example}
+
+\begin{example}[the lower bound $\gamma_f\le\TV$ is sharp]\label{ex:tight1}
+In general $\gamma_f\le\sum_S\pos{\hP(S,S)-P(S,S)}\le\TV(P^f,\hP^f)$. For $P$
+uniform on $\{(a,b),(b,a)\}$, $\hP$ is uniform on $\{(a,a),(b,b)\}$, and
+$\TV(P,\hP)=\gamma_{\mathrm{id}}=1$.
+\end{example}
+
+\begin{example}[without recoupling, a maximal coupling can move by $1$]\label{ex:move}
+Let $X\sim\mathrm{Unif}\{a,b\}$ and $Y\sim\mathrm{Unif}\{c,d\}$. The couplings
+uniform on $\{(a,c),(b,d)\}$ and uniform on $\{(a,d),(b,c)\}$ are both maximal
+(here $\Pr[X=Y]=0$) and are at total variation distance $1$ from each other. A
+procedure that only looks at the marginals can thus move a coupling that is
+already maximal by the largest possible amount. By
+\cref{cor:coarsen}\ref{it:preserve}, \MRC{} leaves any maximal coupling unchanged.
+\end{example}
+
+\begin{example}[the properties do not determine $\hP$]\label{ex:nonunique}
+Let $P$ be uniform on $\{(a,c),(b,c),(c,d),(c,e)\}$. Then $a,b$ are sources, $d,e$
+are sinks, and $c$ is balanced. \MRC{} gives
+$\hP(c,c)=\tfrac12$ and $\hP(s,t)=\tfrac18$ for $s\in\{a,b\}$, $t\in\{d,e\}$.
+The maximal couplings
+\[
+\tfrac12\delta_{(c,c)}+\tfrac14\delta_{(a,d)}+\tfrac14\delta_{(b,e)}\quad\text{and}\quad
+\tfrac12\delta_{(c,c)}+\tfrac14\delta_{(a,e)}+\tfrac14\delta_{(b,d)}
+\]
+satisfy
+\cref{thm:mrc}\ref{it:diag},\ref{it:comp} for every $S$ and every partition as
+well. Indeed, the first one is obtained by decomposing $P$ into the paths
+$a\to c\to d$ and $b\to c\to e$, each of weight $\tfrac14$, and shortcutting them.
+The second uses $a\to c\to e$ and $b\to c\to d$. In each case the weighted $g$-
+and $\hat g$-matrices of \cref{sec:mrc-proofs} sum to $P$ and to the candidate,
+and the proofs of \ref{it:diag} and \ref{it:comp} go through verbatim. \MRC{} is
+their average.
+\end{example}
+
+\subsection{A short non-constructive existence proof}
+
+The existence of a maximal coupling that preserves all maximal coarsenings has a
+short proof by linear programming. It was in fact found before \MRC{}. It gives
+no sampling algorithm. We give the finite-dimensional argument, although a
+compactness argument extends it to countable $E$. It shows the mechanism: the
+\emph{exchange move}.
+
+\begin{proposition}\label{prop:lp}
+Let $P$ be a coupling on $E$ and let $f_1,\dots,f_m$ be maps on $E$ such that $P$
+is maximal on each $f_k$. Then there is a maximal coupling $P^*$ of $\pX,\pY$
+with $(P^*)^{f_k}=P^{f_k}$ for all $k$.
+\end{proposition}
+\begin{proof}
+Maximize $\sum_x Q(x,x)$ over the polytope of distributions $Q$ on $E\times E$
+with marginals $\pX,\pY$ and $Q^{f_k}=P^{f_k}$ for all $k$. The polytope is
+nonempty since it contains $P$, and it is compact, so a maximizer $P^*$ exists.
+Suppose $P^*$ is not maximal. Write $e_{vw}$ for the matrix unit. By \cref{lem:local} there are $a$, $b\neq a$ and
+$c\neq a$ with $\delta=\min\{P^*(a,b),P^*(c,a)\}>0$. Let
+$\tilde P=P^*+\delta(e_{aa}+e_{cb}-e_{ab}-e_{ca})$. This has the same marginals,
+and its objective is larger by at least $\delta$ (by $2\delta$ if $b=c$). Fix $k$ and write $f=f_k$. Since
+$(P^*)^f=P^f$ is maximal and has mass on $(f(a),f(b))$ and $(f(c),f(a))$,
+\cref{lem:local} forces $f(a)=f(b)$ or $f(c)=f(a)$. In either case the move
+changes $(P^*)^f$ by
+$\delta(e_{f(a)f(a)}+e_{f(c)f(b)}-e_{f(a)f(b)}-e_{f(c)f(a)})=0$. So $\tilde P$ is
+feasible, contradicting optimality.
+\end{proof}
+
+%======================================================================
+\section{Proofs for maximal recoupling}\label{sec:mrc-proofs}
+%======================================================================
+
+Fix a coupling $P$ on $E$. Let $E_X=\{v:\pX(v)>0\}$. For $v\in E_X$ let
+$K(v,w)=P(v,w)/\pX(v)$ be the conditional law used on line~4 of
+\cref{alg:mrc}. For $w$ with $\pY(w)>0$ let
+\[
+  \rho(w)=\min\{1,\pX(w)/\pY(w)\}=\pX(w)/\pmax(w)
+\]
+be the continuation probability on line~5, and set $\rho(w)=1$ if $\pY(w)=0$.
+Only $w$ with $\pY(w)>0$ are ever drawn, because $K(v,w)=0$ otherwise, so this
+convention is never used. For $w$ with $\pY(w)>0$, $\rho(w)>0$ iff $w\in E_X$,
+and $\rho(w)<1$ iff $w\in\Em$. All sums over inputs or departure points below
+run over $E_X$. Quantities indexed by $v\notin E_X$ are $0$.
+
+\subsection{The walk}
+
+Each iteration of the loop starts at the current value $v$. We say it
+\emph{departs} from $v$, makes one call to the conditional sampler with input
+$v$, and \emph{traverses} the arc $(v,w)$ that it draws. It then either
+continues at $w$ (probability $\rho(w)$) or exits, returning $w$. The loop is
+therefore a Markov chain on $E_X$ with substochastic transition matrix
+$Q(v,w)=K(v,w)\rho(w)$ and exit probabilities $H(v,w)=K(v,w)(1-\rho(w))$. From
+the input $x$, the loop is entered with probability
+$1-\min\{1,\pY(x)/\pX(x)\}=\alpha(x)/\pX(x)$. In one run of $\MRC$, with
+$x\sim\pX$, the loop is therefore entered at $x$ with probability $\alpha(x)$.
+
+For $x\in E_X$, let $N_x(v)\in[0,\infty]$ be the expected number of
+departures from $v$ during $\MRC$-Cond$_P(x)$, and let
+$\mu(v)=\sum_{x\in E_X}\pX(x)N_x(v)$ be the expected number in one run of
+$\MRC$. If $x\notin\Ep$ the loop is never entered and $N_x=0$. For $x\in\Ep$,
+counting visits step by step gives
+\[
+  N_x=\frac{\alpha(x)}{\pX(x)}\sum_{n\ge0}e_x^{\top}Q^n,\qquad\text{hence}\qquad
+  \mu=\sum_{n\ge0}\alpha^{\top}Q^n \quad(\text{row vectors on }E_X),
+\]
+with $\alpha$ supported on $\Ep$. The series are finite by \cref{lem:walk}.
+Each departure from $v$ traverses $(v,w)$ with probability $K(v,w)$ and exits
+at $w$ with probability $H(v,w)$, independently of the past. So the expected
+number of traversals of $(v,w)$ in one run is $\mu(v)K(v,w)$, and the expected
+number of exits at $w$ is $\sum_v\mu(v)H(v,w)$.
+
+\subsection{Structure of the flow}
+
+Let $G$ be the directed graph on $E$ with an arc $v\to w$ iff $P(v,w)>0$. Let
+$R$ be the set of nodes reachable in $G$ from $\Ep$ (by paths of length $\ge 0$),
+and let $U=E\setminus R$.
+
+\begin{lemma}[structure]\label{lem:structure}
+\leavevmode
+\begin{enumerate}[label=(\roman*)]
+  \item $P(R,U)=0$ and $P(U,R)=0$.
+  \item $\pX(u)=\pY(u)$ for every $u\in U$. In particular $\Ep\cup\Em\subseteq R$.
+  \item Every $v\in R\cap E_X$ has a path of positive length in $G$ to a node of $\Em$.
+\end{enumerate}
+\end{lemma}
+\begin{proof}
+(i,ii) $R$ is closed under following arcs, so $P(R,U)=0$. Then
+\[
+\pX(U)-\pY(U)=P(U,R)+P(U,U)-P(R,U)-P(U,U)=P(U,R)\ge0.
+\]
+But $U\cap\Ep=\emptyset$, so $\pX(u)\le\pY(u)$ for every $u\in U$. Hence
+$P(U,R)=0$ and $\pX=\pY$ on $U$.
+
+(iii) Since $\pX(v)>0$ there is $w$ with $P(v,w)>0$, and $w\in R$. Let $J$ be the
+set of nodes reachable from $w$, including $w$. Suppose $J\cap\Em=\emptyset$.
+$J$ is closed, so $P(J,E\setminus J)=0$ and
+$\pY(J)-\pX(J)=P(E\setminus J,J)\ge 0$. With no sinks in $J$, $\pY\le\pX$ on $J$,
+so $P(E\setminus J,J)=0$ and $\pX=\pY$ on $J$. In particular $J\cap\Ep=\emptyset$.
+But $w\in R$, so a path leads from some $s\in\Ep$ to $w$. Since $s\notin J$,
+this path enters $J$ through an arc with positive weight from $E\setminus J$
+into $J$, which is a contradiction. Thus some $u\in J\cap\Em$ is reachable from
+$v$ by a path $v\to w\to\cdots\to u$ of positive length.
+\end{proof}
+
+\begin{lemma}[the walk]\label{lem:walk}
+Let $R_X=R\cap E_X$ and let $Q_R$ be the restriction of $Q$ to $R_X$.
+\begin{enumerate}[label=(\roman*)]
+  \item Started in $R_X$, the walk stays in $R_X$ until it exits.
+  \item The spectral radius of $Q_R$ is less than $1$. Hence the walk exits almost surely from every start in $R_X$, and the number of departures has finite expectation.
+  \item $\mu(v)=\pX(v)$ for $v\in R$, and $\mu(v)=0$ for $v\in U$.
+  \item The expected number of traversals of $(v,w)$ in one run of $\MRC$ is $T(v,w)=P(v,w)\one[v\in R]$.
+\end{enumerate}
+\end{lemma}
+\begin{proof}
+(i) If $v\in R_X$ and $Q(v,w)>0$, then $P(v,w)>0$, so $w\in R$, and $\rho(w)>0$,
+so $w\in E_X$.
+
+(ii) Let $v\in R_X$. By \cref{lem:structure}(iii) there is a path
+$v=u_0\to u_1\to\dots\to u_m$ with $m\ge1$ and $u_m\in\Em$. Truncating at the
+first sink among $u_1,\dots,u_m$, we may assume $u_1,\dots,u_{m-1}\notin\Em$, and
+also that $m\le|E|$. For $1\le i<m$ we have $\pY(u_i)>0$ (it has an in-arc) and
+$u_i\notin\Em$, so $\pX(u_i)\ge\pY(u_i)>0$ and $\rho(u_i)=1$. The walk follows
+this path and exits at $u_m$ with probability
+$\prod_{i=1}^{m}K(u_{i-1},u_i)\,(1-\rho(u_m))>0$. Since $R_X$ is finite, there is
+$\varepsilon>0$ such that from every state of $R_X$ the walk exits within $|E|$
+steps with probability at least $\varepsilon$. So every row sum of $Q_R^{|E|}$
+is at most $1-\varepsilon$, and $\|Q_R^{|E|}\|_\infty<1$.
+
+(iii) The loop is entered only at sources, and $\Ep\subseteq R_X$. By (i), $\mu$
+is supported on $R_X$, and by (ii),
+$\mu|_{R_X}=\alpha|_{R_X}^{\top}(I-Q_R)^{-1}$ is the unique solution of
+$m=\alpha|_{R_X}+mQ_R$. We check that $m=\pX|_{R_X}$ is also a solution. For
+$w\in R_X$, nodes $v\in R\setminus E_X$ have $P(v,\cdot)=0$, and $P(U,w)=0$ by
+\cref{lem:structure}(i). Hence
+\[
+  \sum_{v\in R_X}\pX(v)Q(v,w)=\rho(w)\sum_{v\in R_X}P(v,w)=\rho(w)\,P(E,w)=\rho(w)\pY(w)=\min\{\pX(w),\pY(w)\},
+\]
+and $\alpha(w)+\min\{\pX(w),\pY(w)\}=\pX(w)$. So $\mu=\pX$ on $R_X$. On
+$R\setminus E_X$ both sides are $0$, and on $U$ we have $\mu=0$.
+
+(iv) The expected number of traversals is $\mu(v)K(v,w)=P(v,w)\one[v\in R]$.
+\end{proof}
+
+\subsection{Proof of \texorpdfstring{\cref{thm:mrc}\ref{it:term}--\ref{it:eff}}{the main theorem, parts (a)--(d)}}
+
+\ref{it:term} If the loop is entered at $x$, then $x\in\Ep\subseteq R_X$. Apply
+\cref{lem:walk}(ii).
+
+\ref{it:max} The first line returns $x$ with probability
+$\pX(x)\min\{1,\pY(x)/\pX(x)\}=\min\{\pX(x),\pY(x)\}$. The loop is entered only
+at $x\in\Ep$ and returns only some $w$ with $\rho(w)<1$, that is, $w\in\Em$.
+Since $\Ep\cap\Em=\emptyset$, the loop never returns $x$. Hence
+$\hP(x,x)=\min\{\pX(x),\pY(x)\}$, and the off-diagonal support lies in
+$\Ep\times\Em$.
+
+\ref{it:coupling} By \ref{it:term}, $\hP(x,E)=\pX(x)$. For the $Y$-marginal, let
+$y\in\Em$. By \cref{lem:structure}(ii), $y\in R$, so $P(R,y)=\pY(y)$. Using
+\cref{lem:walk}(iv), the expected number of exits at $y$ is
+\[
+  \hP(E\setminus\{y\},y)=\sum_v\mu(v)H(v,y)=\sum_vT(v,y)(1-\rho(y))=P(R,y)\Bigl(1-\frac{\pX(y)}{\pY(y)}\Bigr)=\beta(y).
+\]
+For $y\notin\Em$ there are no exits at $y$, and again
+$\hP(E\setminus\{y\},y)=0=\beta(y)$. With \ref{it:max},
+$\hP(E,y)=\min\{\pX(y),\pY(y)\}+\beta(y)=\pY(y)$.
+
+\ref{it:eff} Let $q_x(y)=\Pr[\MRC\text{-Cond}_P(x)=y]$. Number the invocations
+$k=1,2,\dots$, let $I_k$ be the input of the $k$-th one (undefined if there are
+fewer than $k$), and let $D_k(v)$ be the number of conditional-sampler calls
+with input $v$ that it makes. The $k$-th invocation uses fresh randomness, so
+$\Ex[D_k(v)\mid I_k=x,\text{past}]=N_x(v)$. By the tower property and Tonelli's
+theorem,
+\[
+  \Ex\Bigl[\sum_kD_k(v)\Bigr]=\sum_x c(x)N_x(v)\le\lambda\sum_x\pX(x)N_x(v)=\lambda\,\mu(v)\le\lambda\,\pX(v).
+\]
+The same argument gives $\sum_xc(x)q_x(y)\le\lambda\sum_x\pX(x)q_x(y)=\lambda\,\hP(E,y)=\lambda\,\pY(y)$
+for the expected number of invocations returning $y$. One run of $\MRC$ has
+$c=\pX$ and $\lambda=1$, and makes $\sum_v\mu(v)=\pX(R)\le1$ expected
+conditional-sampler calls. \qed
+
+\subsection{Trajectories, and proof of \texorpdfstring{\cref{thm:mrc}\ref{it:diag},\ref{it:comp}}{the main theorem, parts (e,f)}}
+
+In one run of $\MRC$, if the loop is entered, let $t=(v_0,v_1,\dots,v_l)$ be its
+\emph{trajectory}: $v_0=x$, $v_1,\dots,v_{l-1}$ are the values at which it
+continued, $v_l$ is the returned value, and $l\ge1$. If the loop is not entered,
+let $t=\emptyset$. Writing $e_{vw}$ for the matrix unit, define
+\[
+  g(t)=\sum_{i=1}^{l}e_{v_{i-1}v_i},\qquad
+  \hat g(t)=\sum_{i=1}^{l-1}e_{v_iv_i}+e_{v_0v_l},\qquad g(\emptyset)=\hat g(\emptyset)=0.
+\]
+So $g(t)$ records the arcs the walk used. $\hat g(t)$ replaces the walk by a
+single shortcut arc from its start to its end, plus a self-loop at every
+interior visit. Let $P_U$ be the restriction of $P$ to $U\times U$ (zero
+elsewhere), and $D_U=\operatorname{diag}(\pX(u)\one[u\in U])$.
+
+\begin{lemma}[trajectory decomposition]\label{lem:traj}
+$\Ex[g(t)]=P-P_U$ and $\Ex[\hat g(t)]=\hP-D_U$.
+\end{lemma}
+\begin{proof}
+$\Ex[g(t)]=T$ by \cref{lem:walk}(iv). By \cref{lem:structure}(i), $P(v,w)>0$ with
+$v\in U$ forces $w\in U$. So $T=P-P_U$.
+
+For $\hat g$, off-diagonal entries come only from the shortcut arc (note
+$v_0\neq v_l$), and $\Ex[\hat g(t)]_{xy}$ for $x\neq y$ is the probability that
+the run starts at $x$ and the loop returns $y$, which is $\hP(x,y)$. A diagonal
+entry $(w,w)$ counts continuations at $w$. Its expectation is
+$\sum_v\mu(v)Q(v,w)=\sum_vT(v,w)\rho(w)=P(R,w)\rho(w)$. For $w\in R$ this equals
+$\pY(w)\rho(w)=\min\{\pX(w),\pY(w)\}=\hP(w,w)$. For $w\in U$ it is
+$0=\hP(w,w)-\pX(w)$, because $\pX(w)=\pY(w)$ there.
+\end{proof}
+
+In words, apart from a balanced component on $U$, which the walk never visits
+and which \MRC{} replaces by its diagonal coupling, the old coupling is the
+average of the walks and the new coupling is the average of the shortcut walks.
+
+\begin{lemma}[pathwise inequalities]\label{lem:pathwise}
+For every trajectory $t$, every $S\subseteq E$ and every partition $\F$ of $E$:
+\begin{enumerate}[label=(P\arabic*)]
+  \item $g(t)(S,E\setminus S)\ge\hat g(t)(S,E\setminus S)$;
+  \item $\sum_{S\ne T\in\F}(g-\hat g)(t)(S,T)\ge\sum_{S\neq T\in\F}\pos{(\hat g-g)(t)(S,T)}$.
+\end{enumerate}
+\end{lemma}
+\begin{proof}
+(P1) The self-loops of $\hat g(t)$ do not cross from $S$ to $E\setminus S$, so
+the right side is $1$ if $v_0\in S$ and $v_l\notin S$, and $0$ otherwise. In the
+first case the walk leaves $S$ at some step, so the left side is at least $1$.
+
+(P2) Let $a$ be the number of steps of $t$ that cross between different blocks
+of $\F$. Then $\sum_{S\neq T}g(t)(S,T)=a$. The only off-block entry of
+$\hat g(t)$ is the shortcut, so $\sum_{S\ne T}\hat g(t)(S,T)=b\in\{0,1\}$, with
+$b=1$ iff $v_0$ and $v_l$ lie in different blocks $S_0\ne T_0$. The right side
+is $1$ iff $b=1$ and no step of $t$ goes directly from $S_0$ to $T_0$, and $0$
+otherwise. If it is $1$, the walk leaves $S_0$ first to a block other than
+$T_0$, so it crosses at least twice, and $a-b\ge1$. If it is $0$, then
+$a-b\ge0$, because $b=1$ implies $a\ge1$.
+\end{proof}
+
+\begin{proof}[Proof of \cref{thm:mrc}\ref{it:diag}]
+Rows of $P$ and $\hP$ both sum to $\pX$, so
+$\hP(S,S)-P(S,S)=P(S,E\setminus S)-\hP(S,E\setminus S)$. By \cref{lem:traj},
+this equals $\Ex[(g-\hat g)(t)(S,E\setminus S)]+P_U(S,E\setminus S)$, since $D_U$
+is diagonal. Both terms are nonnegative, the first by (P1).
+\end{proof}
+
+\begin{proof}[Proof of \cref{thm:mrc}\ref{it:comp}]
+For distinct blocks $S,T$, $D_U(S,T)=0$, so by \cref{lem:traj}
+$(P-\hP)(S,T)=\Ex[(g-\hat g)(t)(S,T)]+P_U(S,T)$. Summing, using (P2) and then the
+convexity of $z\mapsto z^+$,
+\begin{align*}
+  \sum_{S\ne T}(P-\hP)(S,T)&\ \ge\ \sum_{S\neq T}\Bigl(\pos{\Ex[(\hat g-g)(t)(S,T)]}+P_U(S,T)\Bigr)\\
+  &\ \ge\ \sum_{S\neq T}\pos{\Ex[(\hat g-g)(t)(S,T)]-P_U(S,T)}.
+\end{align*}
+The last step uses $z^++u\ge(z-u)^+$ for $u\ge0$. The argument of the last
+positive part is $(\hP-P)(S,T)$.
+\end{proof}
+
+\begin{proof}[Proof of \cref{cor:coarsen}]
+Let $\F$ be the partition of $E$ into fibres of $f$, so
+$\gamma_f=\sum_{S\in\F}(\hP-P)(S,S)$. Part \ref{it:gain} is
+\cref{thm:mrc}\ref{it:diag}. For \ref{it:tv}, by \ref{it:diag} the diagonal
+blocks contribute exactly $\gamma_f$ to
+$\TV(P^f,\hP^f)=\sum_{S,T}\pos{(\hP-P)(S,T)}$. By \ref{it:comp}, the
+off-diagonal blocks contribute at most $\sum_{S\neq T}(P-\hP)(S,T)$, which is
+$\gamma_f$ because $P$ and $\hP$ have the same total mass. For
+\ref{it:preserve}, $\hP^f$ is a coupling of the same pushforward marginals as
+$P^f$ by \cref{thm:mrc}\ref{it:coupling}. Since $P^f$ maximizes the agreement
+probability among such couplings, $\gamma_f\le0$. With \ref{it:gain},
+$\gamma_f=0$, and then \ref{it:tv} gives $\hP^f=P^f$.
+\end{proof}
+
+\subsection{Proof of the closed form}
+
+\begin{proof}[Proof of \cref{prop:closed-form}]
+The diagonal and the support were established in
+\cref{thm:mrc}\ref{it:max}. Fix $x\in\Ep$ and $y\in\Em$. Summing over the
+number of continuations,
+\[
+  \hP(x,y)=\alpha(x)\sum_{n\ge0}\sum_{v}(Q^n)_{xv}H(v,y).
+\]
+On $E_X$, using $\rho(w)=\pX(w)/\pmax(w)$, we have
+$Q=D_X^{-1}PD_{\max}^{-1}D_X$, where $D_X=\operatorname{diag}(\pX)$ and
+$D_{\max}=\operatorname{diag}(\pmax)$. Also
+$H(v,y)=P(v,y)\beta(y)/(\pX(v)\pmax(y))$. Hence
+\[
+  \sum_v(Q^n)_{xv}H(v,y)=\frac{\beta(y)}{\pX(x)\pmax(y)}\bigl[(PD_{\max}^{-1})^nP\bigr]_{xy}
+  =\frac{\beta(y)}{\pX(x)\pmax(y)}\sqrt{\pmax(x)\pmax(y)}\,(A^{n+1})_{xy},
+\]
+since $(PD_{\max}^{-1})^nP=D_{\max}^{1/2}A^{n+1}D_{\max}^{1/2}$ on the support of
+$\pmax$. Intermediate nodes of a positive-weight path have $\pmax>0$, so
+restricting to that support loses nothing. Using $\pmax(x)=\pX(x)$ and
+$\pmax(y)=\pY(y)$ gives the series form.
+
+For convergence, and for the pseudoinverse, order the nodes as $R$ followed by
+$U$. By \cref{lem:structure}(i), $A=A_R\oplus A_U$ is block diagonal. Ordering
+$R$ as $R_X$ followed by $R\setminus E_X$ (rows of $A$ vanish on the latter)
+makes $A_R$ block upper triangular, with diagonal blocks $A_{R_X}$ and $0$. Now
+$A_{R_X}$ is similar to $Q_R$, since
+$Q=D_X^{-1}D_{\max}^{1/2}AD_{\max}^{-1/2}D_X$ on $E_X$. So
+$\varrho(A_R)=\varrho(Q_R)<1$ by \cref{lem:walk}(ii). Hence
+$\sum_{n\ge1}(A^n)_{xy}=\sum_{n\ge1}(A_R^n)_{xy}=[(I-A_R)^{-1}]_{xy}$, using
+$x\ne y$ to add the $n=0$ term. The Moore--Penrose pseudoinverse of a block
+diagonal matrix is the block diagonal matrix of the blocks' pseudoinverses.
+Permutation similarity commutes with taking pseudoinverses, and
+$(I-A_R)^+=(I-A_R)^{-1}$. Therefore $[(I-A)^{+}]_{xy}=[(I-A_R)^{-1}]_{xy}$.
+Finally, a node of $U$ cannot reach a sink, because $U$ is closed and contains
+no sinks. So under the extra hypothesis every node of $U$ has $\pmax=0$, $A_U=0$,
+and $I-A=(I-A_R)\oplus I$ is invertible.
+\end{proof}
+
+\begin{remark}[path form]
+Equivalently, for $x\in\Ep$ and $y\in\Em$,
+\[
+\hP(x,y)=\alpha(x)\beta(y)\sum_{l\ge1}\ \sum_{v_0=x,\,v_1,\dots,v_{l-1},\,v_l=y}\ \frac{\prod_{i=1}^{l}P(v_{i-1},v_i)}{\prod_{i=0}^{l}\pmax(v_i)},
+\]
+where the inner sum runs over positive-weight paths, so every $\pmax(v_i)>0$.
+This is the probability of each trajectory, summed. The summand is visibly
+invariant under reversing the path and transposing $P$.
+\end{remark}
+
+%======================================================================
+\section{Simultaneously maximal coupling on chain-product trees}\label{sec:cpt}
+%======================================================================
+
+From now on, $X=(X_i)_{i\in\Var}$ and $Y=(Y_i)_{i\in\Var}$, where $\Var$ is a
+nonempty finite index set of size $n$ and $X_i,Y_i$ take values in a finite set $E_i$. For
+$S\subseteq\Var$ write $E_S=\prod_{i\in S}E_i$, and write $x_S$ for the
+restriction of $x$ to $S$. Let $P_X$ and $P_Y$ be the laws of $X$ and $Y$ on
+$E_\Var$.
+
+\begin{definition}[simultaneously maximal coupling]
+Let $\F$ be a family of nonempty subsets of $\Var$. A coupling of $P_X$ and $P_Y$
+is \emph{simultaneously maximal for $\F$} if, for every $S\in\F$, $(X_S,Y_S)$ is
+maximally coupled:
+$\Pr[X_S=Y_S=a]=\min\{\Pr[X_S=a],\Pr[Y_S=a]\}$ for all $a\in E_S$. $\F$ is a
+\emph{chain} if it is totally ordered by inclusion, and \emph{laminar} if any
+two members are nested or disjoint.
+\end{definition}
+
+\begin{definition}[chain-product tree]
+A \emph{chain-product tree} (CPT) over $\Var$ is a rooted tree whose nodes
+$\tau$ have \emph{scopes} $\Var(\tau)\subseteq\Var$, built from three kinds of
+node:
+\begin{itemize}
+  \item a \emph{leaf} $\mathrm{leaf}(i)$, with scope $\{i\}$;
+  \item a \emph{product} $\mathrm{prod}(\tau_1,\tau_2)$ with $\Var(\tau_1)\cap\Var(\tau_2)=\emptyset$, with scope $\Var(\tau_1)\cup\Var(\tau_2)$;
+  \item a \emph{chain} $\mathrm{chain}(\tau_1,i)$ with $i\notin\Var(\tau_1)$, with scope $\Var(\tau_1)\cup\{i\}$.
+\end{itemize}
+The root has scope $\Var$, so each $i\in\Var$ is introduced exactly once, by a
+leaf or by a chain node. A pair $(P_X,P_Y)$ is \emph{compatible} with the CPT if,
+for every product node $\mathrm{prod}(\tau_1,\tau_2)$, $X_{\Var(\tau_1)}$ and
+$X_{\Var(\tau_2)}$ are independent under $P_X$, and likewise for $Y$ under $P_Y$.
+\end{definition}
+
+A compatible distribution factorizes along the tree. The marginal of
+$X_{\Var(\tau)}$ is $P_{X_i}$ at a leaf, the product of the children's
+marginals at a product node, and the child's marginal times the conditional
+$P(X_i\mid X_{\Var(\tau_1)})$ at a chain node. The \emph{oracles} of a CPT are,
+for $Z\in\{X,Y\}$: a sampler and likelihood for $P_{Z_i}$ at each leaf, and a
+conditional sampler and conditional likelihood for
+$P(Z_i\mid Z_{\Var(\tau_1)}=z)$ at each chain node. The conditional oracles must
+be defined for every $z$, including histories of probability zero, where any
+fixed normalized distribution may be used. Since such histories have zero
+marginal likelihood, the choice never affects a likelihood. It also never
+affects a coupling, and the extended kernels are used in the definition of
+$\ltimes$ below. Implementations may short-circuit a likelihood to $0$ as soon
+as a factor vanishes. Likelihoods of
+$Z_{\Var(\tau)}$ are computed as products of oracle likelihoods, at a cost of
+$|\Var(\tau)|$ oracle evaluations. Ancestral sampling along the tree draws
+$x\sim P_X$ with one call to each $X$-side sampler.
+
+\paragraph{Couplings at the nodes.}
+Define a coupling $\hP_\tau$ of $(P_{X_{\Var(\tau)}},P_{Y_{\Var(\tau)}})$ for
+each node, bottom-up:
+\begin{align*}
+  \hP_{\mathrm{leaf}(i)}&=\MRC(P_{X_i}\otimes P_{Y_i}),\\
+  \hP_{\mathrm{prod}(\tau_1,\tau_2)}&=\MRC\bigl(\hP_{\tau_1}\otimes\hP_{\tau_2}\bigr),\\
+  \hP_{\mathrm{chain}(\tau_1,i)}&=\MRC\bigl(\hP_{\tau_1}\ltimes(K_X,K_Y)\bigr),
+\end{align*}
+where $(\hP_{\tau_1}\otimes\hP_{\tau_2})((x_1,x_2),(y_1,y_2))=\hP_{\tau_1}(x_1,y_1)\hP_{\tau_2}(x_2,y_2)$, and
+\[
+  \bigl(J\ltimes(K_X,K_Y)\bigr)((x_1,x_i),(y_1,y_i))=J(x_1,y_1)\,K_X(x_i\mid x_1)\,K_Y(y_i\mid y_1),
+\]
+with $K_Z(\cdot\mid z)=P(Z_i=\cdot\mid Z_{\Var(\tau_1)}=z)$. In words: the
+children's couplings are combined independently (product), or extended by
+letting $X_i$ and $Y_i$ follow their own conditionals given their own pasts
+(chain). The result is then recoupled.
+
+\paragraph{The SMC-CPT algorithm.}
+Every coupling above has a conditional sampler built from those of its parts:
+\begin{itemize}
+  \item $\MRC(J)$: run $\MRC$-Cond$_J$ (\cref{alg:mrc}) with $J$'s conditional sampler and the likelihoods of the scope's marginals;
+  \item $P_{X_i}\otimes P_{Y_i}$: ignore the input and draw from $P_{Y_i}$;
+  \item $J_1\otimes J_2$: given $(x_1,x_2)$, return $(y_1,y_2)$ with independent $y_1\sim J_1(\cdot\mid x_1)$, $y_2\sim J_2(\cdot\mid x_2)$;
+  \item $J\ltimes(K_X,K_Y)$: given $(x_1,x_i)$, draw $y_1\sim J(\cdot\mid x_1)$, then $y_i\sim K_Y(\cdot\mid y_1)$.
+\end{itemize}
+SMC-CPT draws $x\sim P_X$ by ancestral sampling and returns $(x,y)$ with $y$ from
+the root's conditional sampler. \Cref{app:pseudocode} spells this out as
+pseudocode.
+
+\begin{theorem}[SMC-CPT]\label{thm:cpt}
+Let $(P_X,P_Y)$ be compatible with a CPT. Then:
+\begin{enumerate}[label=(\alph*)]
+  \item \textbf{Validity.} SMC-CPT terminates almost surely, and its output has law $\hP_{\mathrm{root}}$, a coupling of $P_X$ and $P_Y$.
+  \item \textbf{Simultaneous maximality.} For every node $\tau$, $(X_{\Var(\tau)},Y_{\Var(\tau)})$ is maximally coupled. Moreover the joint law of $(X_{\Var(\tau)},Y_{\Var(\tau)})$ under $\hP_{\mathrm{root}}$ equals $\hP_\tau$.
+  \item \textbf{Efficiency.} In one run, each $X$-side sampler is called exactly once. At a leaf, the expected number of draws from $P_{Y_i}$ is at most $1$. At a chain node, the expected number of draws from $P(Y_i\mid Y_{\Var(\tau_1)}=z)$ is at most $\Pr[Y_{\Var(\tau_1)}=z]$, so at most $1$ in total. At each node, the recoupling step is invoked at most once in expectation and runs at most one loop iteration in expectation. So the expected number of oracle likelihood evaluations is at most $4\sum_\tau|\Var(\tau)|\le 4n(h+1)$, where $h$ is the height of the tree.
+\end{enumerate}
+\end{theorem}
+
+\begin{proof}
+\emph{Couplings and maximality, bottom-up.} We claim that $\hP_\tau$ is a
+coupling of the marginals on $\Var(\tau)$, and that for every descendant
+$\sigma$ of $\tau$ (including $\tau$) the joint law of
+$(X_{\Var(\sigma)},Y_{\Var(\sigma)})$ under $\hP_\tau$ is $\hP_\sigma$, which is
+maximal.
+
+At a leaf this is \cref{thm:mrc}\ref{it:coupling},\ref{it:max}.
+
+At a product node, $\hP_{\tau_1}\otimes\hP_{\tau_2}$ has $X$-marginal
+$P_{X_{\Var(\tau_1)}}\otimes P_{X_{\Var(\tau_2)}}=P_{X_{\Var(\tau)}}$ by
+compatibility, and likewise for $Y$. Its projection onto the coordinates of a
+descendant $\sigma$ of $\tau_j$ is $\hP_\sigma$ by induction, and $\hP_\sigma$
+is maximal. \Cref{cor:coarsen}\ref{it:preserve}, with $f$ the projection onto
+$E_{\Var(\sigma)}$, says that $\MRC$ preserves each of these projections.
+\Cref{thm:mrc} makes the result a maximal coupling of the marginals on
+$\Var(\tau)$.
+
+At a chain node, $\hP_{\tau_1}\ltimes(K_X,K_Y)$ has $X$-marginal
+$P_{X_{\Var(\tau_1)}}K_X=P_{X_{\Var(\tau)}}$, and likewise for $Y$. Its
+projection onto $\Var(\tau_1)$ is $\hP_{\tau_1}$, and we conclude as before.
+
+\emph{Sampling.} By induction, each conditional sampler draws from the correct
+conditional law. For $\MRC(J)$ this is \cref{thm:mrc} applied to $J$. For the
+product and chain constructions it is immediate from the definitions, since,
+for example, $(J\ltimes K)(\cdot\mid x_1,x_i)$ is the law of
+$(y_1,y_i)$ with $y_1\sim J(\cdot\mid x_1)$ and $y_i\sim K_Y(\cdot\mid y_1)$.
+Termination follows from the efficiency bounds below: every procedure makes a
+finite expected number of oracle calls, hence finitely many almost surely, and
+the loop of each $\MRC$-Cond exits almost surely by \cref{thm:mrc}\ref{it:term}.
+
+\emph{Efficiency, top-down.} For a node $\tau$ let $M_\tau$ be the conditional
+sampler of $\hP_\tau$ and $B_\tau$ that of the coupling before recoupling. We
+show that for every $x\in E_{\Var(\tau)}$, the expected numbers of invocations
+of $M_\tau$ and of $B_\tau$ with input $x$ are both at most
+$\Pr[X_{\Var(\tau)}=x]$. At the root, $M$ is invoked once, with $x\sim P_X$.
+From $M_\tau$ to $B_\tau$, apply \cref{thm:mrc}\ref{it:eff} with $\lambda=1$.
+From $B_\tau$ to the children: at a product node, each invocation of $B_\tau$
+with input $(x_1,x_2)$ makes one invocation of $M_{\tau_1}$ with input $x_1$,
+so the count at $x_1$ is at most $\sum_{x_2}\Pr[X_{\Var(\tau)}=(x_1,x_2)]=\Pr[X_{\Var(\tau_1)}=x_1]$,
+and likewise for $\tau_2$. At a chain node, each invocation makes one
+invocation of $M_{\tau_1}$ with input $x_1$, bounded the same way, followed by
+one draw from $K_Y(\cdot\mid y_1)$, where $y_1$ is that invocation's output. By
+the second half of \cref{thm:mrc}\ref{it:eff}, the expected number of
+invocations of $M_{\tau_1}$ that return $y_1$ is at most
+$\Pr[Y_{\Var(\tau_1)}=y_1]$, which bounds the draws from
+$K_Y(\cdot\mid y_1)$. At a leaf, every invocation of $B_\tau$ makes one draw
+from $P_{Y_i}$, giving at most $\sum_x\Pr[X_i=x]=1$ draws. Finally, $M_\tau$ is
+invoked at most once in expectation, and its loop iterations are invocations
+of $B_\tau$, also at most one in expectation. Each invocation and each
+iteration evaluates the two likelihoods of a point of $E_{\Var(\tau)}$ once,
+which costs at most $2\cdot2|\Var(\tau)|$ oracle evaluations per node. Summing,
+$\sum_\tau|\Var(\tau)|=\sum_{i}(\text{number of nodes whose scope contains }i)\le n(h+1)$.
+\end{proof}
+
+\begin{remark}[what the nodes buy]
+\Cref{thm:cpt} guarantees simultaneous maximality on the scopes of all nodes.
+For particular distributions, other subsets may happen to be maximal as well, for
+example every subset when $P_X=P_Y$. The guaranteed scopes form a laminar
+family. A laminar family of
+nonempty subsets of an $n$-set has at most $2n-1$ members, and a CPT built
+entirely of leaves and products realizes all $2n-1$.
+\end{remark}
+
+%======================================================================
+\section{Characterizations}\label{sec:characterization}
+%======================================================================
+
+In this section every alphabet $E_i$ has at least two elements. For the
+counterexamples we fix two of them, call them $0$ and $1$, and set every
+unmentioned coordinate to the constant $0$.
+
+\begin{lemma}[CPTs from laminar families]\label{lem:laminar-cpt}
+Let $\F$ be laminar. For $S\in\F\cup\{\Var\}$, its \emph{children} are the
+maximal members of $\F$ strictly contained in $S$. These are pairwise disjoint.
+Suppose that for every $S\in\F\cup\{\Var\}$ with children $C_1,\dots,C_k$, the
+variables $X_{C_1},\dots,X_{C_k}$ are mutually independent, and likewise
+$Y_{C_1},\dots,Y_{C_k}$. Then there is a CPT, compatible with $(P_X,P_Y)$, in which
+every member of $\F$ is the scope of a node. Hence $(P_X,P_Y)$ admits a
+coupling that is simultaneously maximal for $\F$, and SMC-CPT samples one.
+\end{lemma}
+\begin{proof}
+Build a node $\tau_S$ with scope $S$ recursively over the inclusion forest. Let
+$C_1,\dots,C_k$ be the children of $S$ and $S\setminus\bigcup_jC_j=\{r_1,\dots,r_m\}$
+in any order. If $k\ge1$, take
+$\mathrm{prod}(\cdots\mathrm{prod}(\tau_{C_1},\tau_{C_2})\cdots,\tau_{C_k})$ and
+then chain in $r_1,\dots,r_m$. If $k=0$, then $m\ge1$: take $\mathrm{leaf}(r_1)$
+and chain in $r_2,\dots,r_m$. Compatibility at the product nodes is mutual
+independence of the children. Apply the construction to $S=\Var$ to get the
+root, then apply \cref{thm:cpt}.
+\end{proof}
+
+\begin{theorem}[no structural assumptions]\label{thm:char-general}
+Every pair $(P_X,P_Y)$ of distributions on $E_\Var$ admits a coupling that is
+simultaneously maximal for $\F$ iff $\F$ is a chain.
+\end{theorem}
+\begin{proof}
+If $\F$ is a chain, each $S\in\F$ has at most one child, and
+\cref{lem:laminar-cpt} applies with no independence needed. The resulting CPT
+is a single chain of chain nodes. Conversely, suppose $S,T\in\F$ are
+incomparable, and take $i\in S\setminus T$ and $j\in T\setminus S$. Let
+$X_i=X_j\sim\mathrm{Unif}\{0,1\}$, and let $Y_i\sim\mathrm{Unif}\{0,1\}$ with
+$Y_j=1-Y_i$. Then $X_S$ and $Y_S$ have the same law, so a maximal coupling of
+them has $X_S=Y_S$, and in particular $X_i=Y_i$, almost surely. Similarly
+$X_j=Y_j$ almost surely. But then $Y_i=X_i=X_j=Y_j$, contradicting $Y_j=1-Y_i$.
+\end{proof}
+
+\begin{theorem}[independent coordinates]\label{thm:char-indep}
+Every pair $(P_X,P_Y)$ of product distributions (the $X_i$ mutually independent,
+and the $Y_i$ mutually independent) admits a coupling that is simultaneously
+maximal for $\F$ iff $\F$ is laminar.
+\end{theorem}
+\begin{proof}
+If $\F$ is laminar, disjoint sets of coordinates are independent, so
+\cref{lem:laminar-cpt} applies. Conversely, suppose $S,T\in\F$ cross: take
+$i\in S\cap T$, $j\in S\setminus T$ and $k\in T\setminus S$. Let $X_i=1$, and
+let $X_j,X_k$ be independent and uniform on $\{0,1\}$. Let $Y_i$ be uniform on
+$\{0,1\}$ and $Y_j=Y_k=1$. Then $X_S$ is uniform on two points, which differ in
+coordinate $j$, and $Y_S$ is uniform on two points, which differ in coordinate
+$i$. The only common point is the one with $x_i=x_j=1$. A maximal coupling of
+$(X_S,Y_S)$ therefore puts mass $1/2$ on $X_S=Y_S$, and that event is contained
+in both $\{X_j=1\}$ and $\{Y_i=1\}$, which have probability $1/2$ each. Hence
+$\{X_j=1\}=\{Y_i=1\}$ almost surely. By the same argument for $T$,
+$\{X_k=1\}=\{Y_i=1\}$ almost surely. So $X_j=X_k$ almost surely, contradicting
+their independence.
+\end{proof}
+
+\begin{remark}
+\Cref{thm:char-indep} answers an open question from the notes. With independent
+tokens, the whole response and every single position can be maximally coupled
+at once, since $\{\{1\},\dots,\{n\},\Var\}$ is laminar.
+\end{remark}
+
+For Bayesian networks, let $G$ be a DAG on $\Var$. A distribution on $E_\Var$ is
+\emph{Markov with respect to $G$} if it factorizes as
+$\prod_vP(x_v\mid x_{\mathrm{pa}(v)})$. Let $\An(S)$ be the set of ancestors of
+members of $S$, including $S$ itself, and call $S$ \emph{ancestral} if
+$\An(S)=S$. Two sets $S,T$ are d-separated by $\emptyset$ iff no active path
+joins them, that is, iff $\An(S)\cap\An(T)=\emptyset$: an active path without
+conditioning has no collider, so it is a \emph{trek} through a common ancestor.
+
+\begin{theorem}[Bayesian networks]\label{thm:char-bn}
+Let $G$ be a DAG on $\Var$. Every pair $(P_X,P_Y)$ of distributions that are
+Markov with respect to $G$ admits a coupling that is simultaneously maximal for
+$\F$ iff $\F$ is laminar and $\An(S)\cap\An(T)=\emptyset$ for all disjoint
+$S,T\in\F$.
+\end{theorem}
+\begin{proof}
+\emph{If.} We check the hypothesis of \cref{lem:laminar-cpt}. The children
+$C_1,\dots,C_k$ of any $S\in\F\cup\{\Var\}$ are pairwise disjoint members of
+$\F$, so the ancestral sets $A_j=\An(C_j)$ are pairwise disjoint. No arc joins
+two of them, since an arc $u\to v$ with $v\in A_j$ puts $u\in A_j$. The
+marginal of a $G$-Markov distribution on the ancestral set $A=\bigcup_jA_j$ is
+$\prod_{v\in A}P(x_v\mid x_{\mathrm{pa}(v)})$. This splits as a product of
+factors, the $j$-th depending only on $x_{A_j}$ and being the marginal of
+$X_{A_j}$. So $X_{A_1},\dots,X_{A_k}$ are mutually independent, and hence so
+are $X_{C_1},\dots,X_{C_k}$. The same holds for $Y$.
+
+\emph{Only if, crossing.} If $\F$ is not laminar, the product distributions of
+\cref{thm:char-indep} are Markov with respect to every DAG.
+
+\emph{Only if, common ancestor.} Suppose $S,T\in\F$ are disjoint and
+$\An(S)\cap\An(T)\ne\emptyset$. A \emph{trek} between $s$ and $t$ is a pair of
+directed paths $\pi_s$ from a vertex $c$ to $s$ and $\pi_t$ from $c$ to $t$,
+either possibly of length $0$, that share only $c$. If $c\in\An(s)\cap\An(t)$,
+take directed paths from $c$ to $s$ and $t$ and restart both at the last vertex
+of the first path that lies on the second. This gives a trek. Choose $s\in S$,
+$t\in T$ and a trek between them of minimum total length. Then $s$ is its only
+vertex in $S$ and $t$ its only vertex in $T$. Indeed, any sub-path of a trek is again a trek (it has no collider). So if
+another trek vertex $u$ were in $T$, the part of the trek between $s$ and $u$
+would be a strictly shorter trek between $S$ and $T$. If $u\in S$, the part
+between $u$ and $t$ would be. Since $s\neq t$, at least one of $\pi_s,\pi_t$ has positive length. Say
+$\pi_t$ does, swapping the roles of $S$ and $T$ if needed.
+
+Now define $X$ and $Y$. Let $X_c,Y_c\sim\mathrm{Unif}\{0,1\}$. Every other
+vertex $u$ on the trek copies its predecessor $u^-$ on its path, which is a
+parent of $u$: $X_u=X_{u^-}$ and $Y_u=Y_{u^-}$, except that $Y_t=1-Y_{t^-}$.
+All other vertices are constant. Each conditional depends on at most one
+parent, so both laws are $G$-Markov. Now $X_s=X_t$, $Y_s=1-Y_t$, and each of
+$X_s,X_t,Y_s,Y_t$ is uniform. Since $S$ contains no trek vertex other than
+$s$, $X_S$ and $Y_S$ have the same law, so maximality forces $X_s=Y_s$ almost
+surely. Likewise $X_t=Y_t$ almost surely. Then
+$Y_s=X_s=X_t=Y_t$, which is a contradiction.
+\end{proof}
+
+\begin{corollary}[ancestral laminar families: an efficient algorithm]\label{cor:ancestral}
+Let $\F$ be laminar with every member ancestral in $G$. Then the CPT of
+\cref{lem:laminar-cpt}, with each remainder $S\setminus\bigcup_jC_j$ chained in a
+topological order of $G$, has chain-node conditionals
+$P(Z_r\mid Z_{\mathrm{prev}})=P(Z_r\mid Z_{\mathrm{pa}(r)})$ for $Z\in\{X,Y\}$.
+These are the network's own conditional distributions. The identity holds on
+histories of positive probability, and elsewhere the network's conditional
+distributions serve as the extension required of the oracles. So SMC-CPT runs with
+oracle access only to the conditional distributions of the two networks, with
+the costs of \cref{thm:cpt}(c).
+\end{corollary}
+\begin{proof}
+Disjoint ancestral sets have disjoint ancestor sets, so \cref{thm:char-bn}
+applies. Let $\mathrm{prev}$ be the set of vertices introduced before $r$ in the
+construction of $S$. The parents of $r$ lie in $S$, because $S$ is ancestral,
+and each lies either in a child $C_j$ or earlier in the remainder, so
+$\mathrm{pa}(r)\subseteq\mathrm{prev}$. No vertex of $\mathrm{prev}$ is a
+descendant of $r$: the $C_j$ are ancestral and do not contain $r$, and the
+earlier remainder vertices precede $r$ topologically. The local Markov property
+gives $X_r\perp X_{\mathrm{prev}\setminus\mathrm{pa}(r)}\mid X_{\mathrm{pa}(r)}$.
+Every scope in this CPT is ancestral, so its marginal likelihood is a product
+of network conditionals.
+\end{proof}
+
+\begin{remark}[non-ancestral families]
+When $\F$ satisfies the condition of \cref{thm:char-bn} but is not ancestral,
+SMC-CPT still applies, but its chain nodes need conditionals such as
+$P(X_r\mid X_{\mathrm{prev}})$ given non-ancestral sets. These generally
+require marginalization and are not available from the network's own
+conditionals.
+\end{remark}
+
+\begin{example}[star graphs]\label{ex:star}
+\Cref{thm:char-bn} can be counterintuitive. Let $G$ be a star with center $0$
+and leaves $1,\dots,n-1$. If the arcs point \emph{inward} (the leaves are
+independent causes of the center), then any laminar family of leaf sets
+(including the leaf singletons) is allowed, plus $\Var$, for up to
+$2(n-1)-1+1=2n-2$ sets ($n\ge2$). The center singleton is not allowed alongside
+any leaf set, because $\An(\{0\})=\Var$.
+If the arcs point \emph{outward}, then any two disjoint nonempty sets share the
+ancestor $0$, so $\F$ must be a chain. That allows at most $n$ sets, no better
+than with no assumptions, even though the leaves are conditionally independent
+given the center. An explicit witness: $X_0,Y_0\sim\mathrm{Unif}(\mathbb Z_n)$,
+$X_i=X_0$ and $Y_i=Y_0+i\bmod n$ for $1\le i\le n-1$. Every pair $(X_i,Y_i)$ is
+identically distributed and could be coupled perfectly on its own, yet
+$X_i=Y_i$ holds for exactly one index $i\in\{0,\dots,n-1\}$.
+\end{example}
+
+\begin{remark}[discrete diffusion]
+In discrete-diffusion samplers such as the absorbing-state dynamics of SEDD
+\cite{lou2024discrete}, the per-position decisions of one step are
+conditionally independent given the current state. Suppose we model the
+sampling decisions as a Bayesian network in which every decision of step
+$t\ge2$ has all decisions of earlier steps as parents, which is the generic
+situation for a neural denoiser. Then the decisions of the first step are
+independent. Every set containing a later decision has every first-step
+decision as an ancestor, so by \cref{thm:char-bn} such a set must be nested with
+every other member of $\F$. The guarantees that hold for \emph{all} distributions
+with this dependency graph are therefore a laminar family on the first step,
+plus a chain of sets above it, as in the outward star of \cref{ex:star}.
+Particular models may of course have more independence than this graph records.
+\end{remark}
+
+%======================================================================
+\section{The autoregressive case}\label{sec:autoregressive}
+%======================================================================
+
+Now take $\Var=\{1,\dots,n\}$ with no independence assumed, which is the
+setting of autoregressive generation. Let $\F$ be the chain of prefixes
+$\{1..i\}$. The CPT is $\mathrm{leaf}(1)$ followed by chain nodes for
+$2,\dots,n$. Write $x_{\le i}$ for prefixes, and write $\pX(x_{\le i})$ and
+$\pY(x_{\le i})$ for the prefix marginals.
+
+\begin{definition}[APOC]
+The \emph{all-prefix-optimal coupling} $\Pi_n$ is defined recursively. $\Pi_1$
+is the CMC coupling of $X_1$ and $Y_1$. Given $\Pi_{i-1}$, for $a\in E_{\le i-1}$
+let
+$r_X(z\mid a)\propto\pos{\pX(az)-\pY(az)}$ and $r_Y(z\mid a)\propto\pos{\pY(az)-\pX(az)}$
+be normalized residuals, and let
+$m(a)=\Pi_{i-1}(a,a)-\sum_z\min\{\pX(az),\pY(az)\}$ be the probability that the
+prefixes agree on $a$ but the next tokens disagree. Then
+\[
+\Pi_i(x_{\le i},y_{\le i})=
+\begin{cases}
+\min\{\pX(x_{\le i}),\pY(x_{\le i})\} & x_{\le i}=y_{\le i},\\[3pt]
+m(x_{<i})\,r_X(x_i\mid x_{<i})\,r_Y(y_i\mid x_{<i}) & x_{<i}=y_{<i},\ x_i\neq y_i,\\[3pt]
+\Pi_{i-1}(x_{<i},y_{<i})\,r_X(x_i\mid x_{<i})\,r_Y(y_i\mid y_{<i}) & x_{<i}\ne y_{<i}.
+\end{cases}
+\]
+Terms with zero mass are $0$, and the normalizers are positive whenever the mass
+is.
+\end{definition}
+
+$\Pi_n$ is maximal for every prefix. Up to notation, this is the coupling the
+author called APOC. The author noted that the first version of Sun et
+al.~\cite{sun2024block} (\textsc{BlockVerify}, later called greedy block
+verification) is essentially its conditional sampler. All-prefix-maximal
+couplings of processes are the maximal agreement couplings of
+\cite{vollering2016maximal,ernst2019mexit}.
+
+\begin{theorem}[SMC-CPT reproduces APOC]\label{thm:apoc}
+For the prefix CPT, $\hP_{\mathrm{root}}=\Pi_n$.
+\end{theorem}
+\begin{proof}
+By induction on $i$. At the leaf, $\MRC$ of the independent coupling is CMC
+(\cref{rem:cmc}). For the step, let $J=\Pi_{i-1}$, which is maximal on
+$E_1:=E_{\le i-1}$, let $P=J\ltimes(K_X,K_Y)$ on $E=E_1\times E_i$, and let
+$\hP=\MRC(P)$. Write $x=(x_1,x_2)$ with $x_1\in E_1$ and $x_2\in E_i$.
+
+\emph{Step 1: the walk only sees the first block.} For
+$v=(v_1,v_2)$, $P(\cdot\mid v)$ is the law of $(w_1,w_2)$ with
+$w_1\sim J(\cdot\mid v_1)$ and $w_2\sim K_Y(\cdot\mid w_1)$. This does not
+depend on $v_2$. So the law of the loop started at $x$ depends only on $x_1$,
+and $\hP(x,y)=\alpha(x)h(x_1,y)$ for $x\ne y$, for some function $h$.
+
+\emph{Step 2: symmetry.} $P^{\top}=J^{\top}\ltimes(K_Y,K_X)$ has the same form
+with the roles of $X$ and $Y$ exchanged. By \cref{cor:symmetry} and Step 1
+applied to $P^\top$, $\hP(x,y)=\beta(y)h'(y_1,x)$ for $x\neq y$.
+
+\emph{Step 3: product form.} Fix $x_1,y_1$. On
+$\{x_2:\alpha(x)>0\}\times\{y_2:\beta(y)>0\}$, the quantity
+$h(x_1,y)/\beta(y)=h'(y_1,x)/\alpha(x)$ depends on $y_2$ alone on the left and
+on $x_2$ alone on the right, so it is a constant $C(x_1,y_1)$. Outside this set,
+$\hP(x,y)=0$ by \cref{thm:mrc}\ref{it:max}. Note that $x=y$ cannot have
+$\alpha(x)\beta(y)>0$. Hence $\hP(x,y)=C(x_1,y_1)\alpha(x)\beta(y)$ for all
+$x\neq y$.
+
+\emph{Step 4: identify $C$.} The projection of $P$ onto $E_1$ is $J$, which is
+maximal, so by \cref{cor:coarsen}\ref{it:preserve} $\hP$ has the same
+projection. For $x_1\neq y_1$ this gives
+$J(x_1,y_1)=C(x_1,y_1)\,a(x_1)\,b(y_1)$, where $a(x_1)=\sum_{x_2}\alpha(x_1,x_2)$
+and $b(y_1)=\sum_{y_2}\beta(y_1,y_2)$. If $J(x_1,y_1)>0$, then $x_1$ is a source
+of $J$ (\cref{lem:local}), so $a(x_1)\ge\pX(x_1)-\pY(x_1)>0$, and likewise
+$b(y_1)>0$. For $x_1=y_1$, the off-diagonal mass inside the block is
+$J(x_1,x_1)-\sum_{z}\min\{\pX(x_1z),\pY(x_1z)\}=C(x_1,x_1)a(x_1)b(x_1)$. Since
+$\alpha(x)/a(x_1)=r_X(x_2\mid x_1)$ and $\beta(y)/b(y_1)=r_Y(y_2\mid y_1)$,
+these identities are exactly the recursion defining $\Pi_i$.
+\end{proof}
+
+\subsection{Per-token couplings}
+
+Two simpler couplings of autoregressive models are common in practice.
+\emph{Per-token optimal coupling} (PTOC) maximally couples the next-token
+distributions given the current prefixes. This is the coupling implicit in
+standard speculative decoding \cite{leviathan2023fast,chen2023accelerating}.
+\emph{Per-token common random numbers} (PTCRN) is a model of seed reuse:
+$X_i=f_X(U_i,X_{<i})$ and $Y_i=f_Y(U_i,Y_{<i})$ with shared i.i.d.\ uniform
+$U_i$ and arbitrary token-choice functions $f_X,f_Y$.
+
+\begin{proposition}[PTCRN $\le$ PTOC, prefix by prefix]\label{prop:ptcrn}
+Interpret $\Pr[X_j=a_j\mid X_{<j}=a_{<j}]$ as the model's next-token kernel,
+which is defined at every history, and similarly for $Y$. Under any PTCRN scheme,
+for every $i$ and every $a$,
+\[
+  \Pr[X_{<i}=Y_{<i}=a_{<i}]\le\prod_{j<i}\min\bigl\{\Pr[X_j=a_j\mid X_{<j}=a_{<j}],\ \Pr[Y_j=a_j\mid Y_{<j}=a_{<j}]\bigr\},
+\]
+and PTOC attains equality.
+\end{proposition}
+\begin{proof}
+Under PTCRN, $X_j$ is conditionally independent of $Y_{<j}$ given $X_{<j}$.
+Indeed, $X_{<j}$ and $Y_{<j}$ are functions of $U_{<j}$, and $X_j=f_X(U_j,X_{<j})$
+with $U_j$ independent of $U_{<j}$. So given $U_{<j}$, the law of $X_j$ depends
+only on $X_{<j}$, through the kernel $k_X(\cdot\mid X_{<j})$. Symmetrically
+for $Y_j$. Let $q_j=\Pr[X_{<j}=Y_{<j}=a_{<j}]$, and induct on $j\ge1$, with $q_1=1$.
+If $q_j=0$ then $q_{j+1}=0$. Otherwise, conditioning on the event
+$\{X_{<j}=Y_{<j}=a_{<j}\}$, which has positive probability,
+\[
+q_{j+1}=q_j\Pr[X_j=Y_j=a_j\mid X_{<j}=Y_{<j}=a_{<j}]\le q_j\min\{k_X(a_j\mid a_{<j}),k_Y(a_j\mid a_{<j})\},
+\]
+because by conditional independence the conditional laws of $X_j$ and $Y_j$
+given that event are $k_X(\cdot\mid a_{<j})$ and $k_Y(\cdot\mid a_{<j})$. PTOC
+has the same conditional independence and couples each step maximally, so
+equality holds at every step.
+\end{proof}
+
+Since the probability that the longest common prefix has length at least $i$ is
+a sum of such prefix agreement probabilities, PTOC also dominates PTCRN for the
+length of the longest common prefix. Both this domination and that of PTOC by
+APOC are weak inequalities that can be strict for some distributions. For a
+particular pair of models, seed reuse can match PTOC: shared inverse-CDF
+sampling of binary tokens is already maximal, for example. But seed reuse in
+its usual form cannot match PTOC universally. There, each model's token-choice
+function depends only on that model's own next-token distribution, as with
+inverse-CDF sampling, so a single scheme couples any number of models at once.
+Three distributions need not admit a simultaneously pairwise maximal coupling
+\cite{angel2021pairwise}: uniform distributions on $\{a,b\}$, $\{a,c\}$ and
+$\{b,c\}$ are pairwise at distance $1/2$, and pairwise maximality would need
+three disjoint events of probability $1/2$. So for some pair the scheme is
+strictly worse than PTOC. APOC can be strictly better than PTOC:
+
+\begin{example}[PTOC is not maximal for whole responses]\label{ex:ptoc}
+Let $X\sim\mathrm{Unif}\{aa,ab,bb\}$ and $Y\sim\mathrm{Unif}\{aa,ba,bb\}$. A
+maximal coupling has $\Pr[X=Y]=2/3$, for instance uniform on
+$\{(aa,aa),(ab,ba),(bb,bb)\}$, but PTOC achieves only $1/3$. Even with independent
+tokens, $\Pr[X_i=H]=3/4$ and $\Pr[Y_i=H]=1/4$ for $i=1,2$ give $1/4$ under PTOC
+but $1/2$ under a maximal coupling of the pair. Here the laminar coupling of
+\cref{thm:char-indep} achieves $1/2$ for the pair while keeping each position
+maximally coupled.
+\end{example}
+
+%======================================================================
+\section{Related work}\label{sec:related}
+%======================================================================
+
+\paragraph{Maximal coupling.}
+Maximal couplings are credited to Doeblin \cite{lindvall1991doeblin}. For
+background see \cite{lindvall1992lectures,levin2009markov}. The
+rejection-sampling algorithm is due to Johnson \cite{johnson1998coupling}. It
+is implicit in speculative decoding \cite{leviathan2023fast,chen2023accelerating},
+and the connection to optimal transport and coupling was made explicit by Sun
+et al.~\cite{sun2023spectr}. We do not know of an earlier description of
+\MRC{}, that is, of using the input coupling's conditional sampler as the
+proposal in this rejection scheme.
+
+\paragraph{Simultaneously maximal couplings of nested families.}
+Griffeath \cite{griffeath1975maximal} and Goldstein \cite{goldstein1979maximal}
+constructed couplings of processes that are maximal for every tail
+$\sigma$-field at once. Völlering \cite{vollering2016maximal} and Ernst, Kendall,
+Roberts and Rosenthal \cite{ernst2019mexit} constructed maximal agreement
+couplings, which keep two processes equal for as long as possible. These are
+maximal for every prefix at once, as in \cref{thm:apoc}. In speculative
+decoding, Sun et al.~\cite{sun2024block} showed that token-level verification
+is not optimal and proposed block verification. Their greedy variant
+corresponds to APOC. Makur and Singh \cite{makur2024doeblin} study
+simultaneously maximal couplings in connection with Doeblin coefficients,
+generalizing a result of Goldstein, and Polyanskiy and Wu
+\cite{polyanskiy2017strong} discuss when a joint law and its marginals can be
+maximally coupled at once. Angel and Spinka \cite{angel2021pairwise} study
+pairwise-optimal couplings of three or more variables.
+
+\paragraph{Independence constraints.}
+The question of which families can be simultaneously maximally coupled under
+independence or Bayesian-network constraints does not arise in Markov-chain
+coupling, where no such independence is present. That may be why we did not
+find it studied. \Cref{thm:char-indep,thm:char-bn} and the SMC-CPT algorithm
+are, as far as we know, new.
+
+%======================================================================
+\section{Open problems}\label{sec:open}
+%======================================================================
+
+\begin{openproblem}[infinite spaces]
+Extend \MRC{} to countable and continuous spaces, with densities in place of
+probabilities. The proofs here use finiteness in \cref{lem:walk} through the
+uniform bound on exit probabilities, and in \cref{prop:lp}. The notes contain a
+sampling algorithm for a single chain step with infinite vocabularies, but no
+general version.
+\end{openproblem}
+
+\begin{openproblem}[tails]
+\Cref{thm:mrc}\ref{it:eff} bounds expected costs. In the finite case, the
+number $L$ of loop iterations in one run has a discrete phase-type
+distribution. With $a=\alpha|_{R_X}^\top$ and $F=(I-Q_R)^{-1}$, we have
+$\Pr[L>k]=aQ_R^k\one$ and $\Ex[L^2]=a(2F^2-F)\one$, and \cref{lem:walk}(ii)
+gives a geometric tail. These quantities depend on the whole flow, though. Give
+useful bounds on the variance or tail of $L$ in terms of accessible parameters,
+such as $\TV(\pX,\pY)$ and bottlenecks of the flow $P$, and for the nested
+calls of SMC-CPT.
+\end{openproblem}
+
+\begin{openproblem}[characterizing \MRC]
+\Cref{ex:nonunique} shows that the properties in \cref{thm:mrc} do not
+determine $\hP$. Is there a natural extra condition, for example a
+conditional-independence or Markov property of the shortcut decomposition, that
+singles out $\MRC(P)$, much as conditional-independence conditions single out
+APOC?
+\end{openproblem}
+
+\begin{openproblem}[non-ancestral families and likelihood-free models]
+Give efficient algorithms for the families of \cref{thm:char-bn} that are not
+ancestral, using only the network's conditionals. Separately, \MRC{} needs
+likelihoods. Can anything similar be done for samplers without likelihoods,
+such as diffusion models evaluated only through their per-step decisions?
+\end{openproblem}
+
+\begin{openproblem}[applications]
+Measure the gain of SMC-CPT over per-token coupling in practice, for example
+acceptance rates in speculative decoding of masked-diffusion models, or
+variance reduction when comparing two discrete-diffusion models.
+\end{openproblem}
+
+%======================================================================
+\section{Provenance and status}\label{sec:provenance}
+%======================================================================
+
+The research is Malcolm Sharpe's, carried out from February to October 2024
+and recorded in blog posts that are archived alongside this document. The
+algorithms, the main theorems and most proof ideas come from those notes. This
+write-up was produced in October 2026 by an AI assistant (Claude Opus 5.5) at the
+author's request. It standardizes notation, completes the proofs and adds a
+few results. The proofs were reviewed by a second model (GPT-6 Astra), and the
+main claims were checked numerically: floating-point evaluation of the
+finite-state formulas on random instances, supplemented by Monte Carlo
+simulation of the literal algorithm.
+Relative to the notes:
+\begin{itemize}
+  \item The Markov-chain facts the notes left as beliefs (recurrence, Cesàro
+  limits, return times) are replaced by \cref{lem:structure,lem:walk}. They
+  need only flow conservation and a spectral-radius bound, and they cover the
+  reducible case.
+  \item The pseudoinverse form of the closed formula, which the notes marked
+  as low confidence, is proved (\cref{prop:closed-form}).
+  \item The conjecture that SMC on autoregressive models reproduces APOC is
+  proved (\cref{thm:apoc}).
+  \item The characterization theorems' ``only if'' directions are proved in
+  general from the notes' counterexamples (\cref{thm:char-general,thm:char-indep,thm:char-bn}).
+  \item Corrections: the notes' pseudocode for the tensor product called a
+  $Y$-sampler where an $X$-sampler was meant. One note stated the
+  total-variation bound with the sign of the gain reversed. One example meant
+  to show a maximal coupling moving by total variation $1$ listed the same
+  coupling twice (\cref{ex:move} gives a correct version).
+\end{itemize}
+Errors may remain. Please treat the novelty assessments in particular as
+provisional.
+
+\begin{thebibliography}{99}\small
+
+\bibitem{angel2021pairwise}
+O.~Angel and Y.~Spinka.
+\newblock Pairwise optimal coupling of multiple random variables.
+\newblock arXiv:1903.00632, 2019.
+
+\bibitem{chen2023accelerating}
+C.~Chen, S.~Borgeaud, G.~Irving, J.-B. Lespiau, L.~Sifre, and J.~Jumper.
+\newblock Accelerating large language model decoding with speculative sampling.
+\newblock arXiv:2302.01318, 2023.
+
+\bibitem{ernst2019mexit}
+P.~A. Ernst, W.~S. Kendall, G.~O. Roberts, and J.~S. Rosenthal.
+\newblock {MEXIT}: Maximal un-coupling times for stochastic processes.
+\newblock \emph{Stochastic Processes and their Applications}, 129(2):355--380, 2019.
+\newblock arXiv:1702.03917.
+
+\bibitem{goldstein1979maximal}
+S.~Goldstein.
+\newblock Maximal coupling.
+\newblock \emph{Zeitschrift f\"ur Wahrscheinlichkeitstheorie und verwandte Gebiete}, 46:193--204, 1979.
+
+\bibitem{griffeath1975maximal}
+D.~Griffeath.
+\newblock A maximal coupling for {M}arkov chains.
+\newblock \emph{Zeitschrift f\"ur Wahrscheinlichkeitstheorie und verwandte Gebiete}, 31:95--106, 1975.
+
+\bibitem{johnson1998coupling}
+V.~E. Johnson.
+\newblock A coupling-regeneration scheme for diagnosing convergence in {M}arkov chain {M}onte {C}arlo algorithms.
+\newblock \emph{Journal of the American Statistical Association}, 93(441):238--248, 1998.
+
+\bibitem{levin2009markov}
+D.~A. Levin, Y.~Peres, and E.~L. Wilmer.
+\newblock \emph{Markov Chains and Mixing Times}.
+\newblock American Mathematical Society, 2009.
+
+\bibitem{leviathan2023fast}
+Y.~Leviathan, M.~Kalman, and Y.~Matias.
+\newblock Fast inference from transformers via speculative decoding.
+\newblock In \emph{International Conference on Machine Learning}, 2023.
+\newblock arXiv:2211.17192.
+
+\bibitem{lindvall1991doeblin}
+T.~Lindvall.
+\newblock W. {D}oeblin, 1915--1940.
+\newblock \emph{The Annals of Probability}, 19(3):929--934, 1991.
+
+\bibitem{lindvall1992lectures}
+T.~Lindvall.
+\newblock \emph{Lectures on the Coupling Method}.
+\newblock Wiley, 1992.
+
+\bibitem{lou2024discrete}
+A.~Lou, C.~Meng, and S.~Ermon.
+\newblock Discrete diffusion modeling by estimating the ratios of the data distribution.
+\newblock In \emph{International Conference on Machine Learning}, 2024.
+\newblock arXiv:2310.16834.
+
+\bibitem{makur2024doeblin}
+A.~Makur and J.~Singh.
+\newblock Doeblin coefficients and related measures.
+\newblock \emph{IEEE Transactions on Information Theory}, 70(7), 2024.
+\newblock arXiv:2309.08475.
+
+\bibitem{polyanskiy2017strong}
+Y.~Polyanskiy and Y.~Wu.
+\newblock Strong data-processing inequalities for channels and {B}ayesian networks.
+\newblock arXiv:1508.06025, 2015.
+
+\bibitem{sun2023spectr}
+Z.~Sun, A.~T. Suresh, J.~H. Ro, A.~Beirami, H.~Jain, and F.~Yu.
+\newblock {SpecTr}: Fast speculative decoding via optimal transport.
+\newblock In \emph{Advances in Neural Information Processing Systems}, 2023.
+\newblock arXiv:2310.15141.
+
+\bibitem{sun2024block}
+Z.~Sun, U.~Mendlovic, Y.~Leviathan, A.~Aharoni, J.~H. Ro, A.~Beirami, and A.~T. Suresh.
+\newblock Block verification accelerates speculative decoding.
+\newblock arXiv:2403.10444, 2024.
+
+\bibitem{vollering2016maximal}
+F.~V\"ollering.
+\newblock On maximal agreement couplings.
+\newblock arXiv:1608.01511, 2016.
+
+\end{thebibliography}
+
+\appendix
+
+%======================================================================
+\section{Glossary: terminology of the original notes}\label{app:glossary}
+%======================================================================
+
+The archived notes changed terminology over time. This table maps their terms
+to the ones used here.
+
+\begin{center}\small
+\begin{tabular}{@{}p{0.38\linewidth}p{0.55\linewidth}@{}}
+\toprule
+Notes & This document\\
+\midrule
+optimal coupling; maximum coupling & maximal coupling\\
+CMC, classic maximal coupling & \cref{alg:cmc}\\
+MRC, maximal recoupling; MRC-Cond & \cref{alg:mrc}\\
+APOC, all-prefix-optimal coupling; APMC; SMC-AR & $\Pi_n$, \cref{sec:autoregressive}\\
+PTOC, PTC (per-token (optimal) coupling) & PTOC\\
+PTCRN, CRN, seed reuse & PTCRN\\
+NCFOC (non-crossing-family-optimal coupling) & simultaneously maximal coupling of a laminar family under independence (\cref{thm:char-indep})\\
+non-crossing family & laminar family\\
+SMCBN, SMC-BN; SMC-I & \cref{thm:char-bn}; \cref{thm:char-indep}\\
+SMC-CPT; Tree (Leaf, Split, Step); TensorProduct; ChainRule & SMC-CPT; CPT (leaf, product, chain); $\otimes$; $\ltimes$\\
+loss of a coupling & $\sum_a\min\{\pX(a),\pY(a)\}-\Pr[X=Y]$\\
+cost decrease; equality-probability improvement & $\gamma_f$\\
+subcoupling; equivalence classes $[\cdot]$ & coarsening $P^f$; fibres of $f$\\
+irreducible $P$ & every node with $\pmax>0$ reaches a sink ($U$ contains no arcs)\\
+$g_{\mathrm{old}}(t)$, $g_{\mathrm{new}}(t)$ & $g(t)$, $\hat g(t)$\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+%======================================================================
+\section{Implementation-level pseudocode}\label{app:pseudocode}
+%======================================================================
+
+A joint object $J$ over a set $E$ provides \texttt{LX}, \texttt{LY} (marginal
+likelihoods), \texttt{sampX()} and \texttt{sampYgivenX(x)}. CPT nodes are
+\texttt{Leaf(mX, mY)}, \texttt{Product(t1, t2)} and \texttt{Chain(t, cmX, cmY)},
+where \texttt{m} is a marginal oracle and \texttt{cm} a conditional oracle. This
+corrects the pseudocode in the notes of 2024-10-08 and 2024-10-10.
+
+\begin{small}
+\begin{verbatim}
+Build(Leaf mX mY)      = MRC(Independent(mX, mY))
+Build(Product t1 t2)   = MRC(Tensor(Build t1, Build t2))
+Build(Chain t cmX cmY) = MRC(ChainRule(Build t, cmX, cmY))
+
+Independent(mX, mY):
+  LX(x) = mX.L(x);  LY(y) = mY.L(y)
+  sampX()          = mX.samp()
+  sampYgivenX(_)   = mY.samp()
+
+Tensor(j1, j2):                       # requires independence of the two scopes
+  LX((x1,x2)) = j1.LX(x1) * j2.LX(x2)
+  LY((y1,y2)) = j1.LY(y1) * j2.LY(y2)
+  sampX()               = (j1.sampX(), j2.sampX())
+  sampYgivenX((x1,x2))  = (j1.sampYgivenX(x1), j2.sampYgivenX(x2))
+
+ChainRule(j, cmX, cmY):
+  LX((x1,x2)) = let a = j.LX(x1) in (a == 0 ? 0 : a * cmX.L(x1, x2))
+  LY((y1,y2)) = let b = j.LY(y1) in (b == 0 ? 0 : b * cmY.L(y1, y2))
+  sampX()               = let x1 = j.sampX() in (x1, cmX.samp(x1))
+  sampYgivenX((x1,_))   = let y1 = j.sampYgivenX(x1) in (y1, cmY.samp(y1))
+
+MRC(j):
+  LX = j.LX;  LY = j.LY;  sampX = j.sampX
+  sampYgivenX(x):
+    with prob min(1, j.LY(x) / j.LX(x)): return x
+    v = x
+    loop:
+      w = j.sampYgivenX(v)
+      with prob min(1, j.LX(w) / j.LY(w)): v = w; continue
+      return w
+
+Sample(tree): j = Build(tree); x = j.sampX(); return (x, j.sampYgivenX(x))
+\end{verbatim}
+\end{small}
+
+In practice, compute likelihoods in log space, since products of many
+conditionals underflow. Cache likelihoods of points already visited.
+
+\end{document}

@@ -1,0 +1,200 @@
+
+<p class="wp-block-paragraph">As a baseline for coupling methods for LLM responses, such as APOC, we&#8217;d like to estimate the mean length of the longest common prefix between two uncoupled responses. It turns out there is an obvious but interesting trick for reducing the variance of this estimate.</p>
+
+
+
+<p class="wp-block-paragraph">Let X and Y be the (uncoupled) responses from the two LLMs, and let f(X,Y) be the length of their LCP. The quantity we want to estimate is</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+E&#91; f(X,Y) ]
+</pre></div>
+
+
+<p class="wp-block-paragraph">The easiest way to do this is to treat f(X,Y) itself as a random variable. With that mindset, we generate n responses from each LLM and use the estimator</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+(1/n) sum_i f(X_i, Y_i)
+</pre></div>
+
+
+<p class="wp-block-paragraph">But since X and Y are uncoupled, the pairing (X_i, Y_i) is arbitrary, so there&#8217;s an obvious improvement available: average over the cross-product.</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+(1/n^2) sum_{i,j} f(X_i, Y_j)
+</pre></div>
+
+
+<p class="wp-block-paragraph">Then we wonder how much better this cross-product estimator is.</p>
+
+
+
+<h1 class="wp-block-heading">Variance of the cross-product estimator</h1>
+
+
+
+<p class="wp-block-paragraph">For convenience, let <code>A_{i,j} = f(X_i, Y_j)</code>.</p>
+
+
+
+<p class="wp-block-paragraph">The variance of the paired estimator:</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+Var&#91;(1/n) sum_i A_{i,i}] = (1/n) Var&#91; A_{1,1} ]
+</pre></div>
+
+
+<p class="wp-block-paragraph">To calculate the variance of the cross-product estimator, note that the covariance between cells is zero unless they share a row or column. We thus get</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+Var&#91;(1/n^2) sum_{i,j} A_{i,j}]
+    = (1/n^2) (var + (n-1) cov_col + (n-1) cov_row)
+</pre></div>
+
+
+<p class="wp-block-paragraph">where</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+var = Var&#91;A_{1,1}]
+cov_col = Cov&#91;A_{1,1}, A_{2,1}]
+cov_row = Cov&#91;A_{1,1}, A_{1,2}]
+</pre></div>
+
+
+<p class="wp-block-paragraph">The ratio of the cross-product estimator&#8217;s variance to the paired estimator&#8217;s variance can be written using correlation coefficients:</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+(1/n)(1 + (n-1) corr_col + (n-1) corr_row)
+</pre></div>
+
+
+<p class="wp-block-paragraph">where</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+corr_col = cov_col / var
+corr_row = cov_row / var
+</pre></div>
+
+
+<p class="wp-block-paragraph">Note that, as we&#8217;d expect, the dependence between cells never improves the estimator&#8217;s variance. Indeed, using the law of total covariance, we can show:</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+cov_col = Cov&#91;f(X_1, Y_1), f(X_2, Y_1)] = Var_{Y_1}&#91; E_{X_1}&#91; f(X_1, Y_1) ] ] &gt;= 0
+</pre></div>
+
+
+<p class="wp-block-paragraph">and likewise <code>cov_row &gt;= 0</code>. So the variance ratio is lower-bounded by <code>1/n</code>.</p>
+
+
+
+<p class="wp-block-paragraph">It&#8217;s helpful to study two illustrative examples, which show the extremes of the variance ratio.</p>
+
+
+
+<h2 class="wp-block-heading">Example: XOR</h2>
+
+
+
+<p class="wp-block-paragraph">Let X and Y be Bernoulli(0.5) and f be XOR. In that case, cov_col and cov_row are both zero, so the variance ratio is <code>1/n</code>, the best possible.</p>
+
+
+
+<h2 class="wp-block-heading">Example: addition</h2>
+
+
+
+<p class="wp-block-paragraph">Let X and Y be N(0,1) and let f be sum. In that case, var is 2 and cov_col and cov_row are both 1, so the variance ratio is 1, i.e. the variance isn&#8217;t improved at all.</p>
+
+
+
+<h1 class="wp-block-heading">Methods</h1>
+
+
+
+<p class="wp-block-paragraph">We&#8217;d like to know how much improvement we get by using the cross-product estimator for our LCP problem, and there&#8217;s no good way to do this aside from experiment.</p>
+
+
+
+<p class="wp-block-paragraph">We&#8217;ll calculate the ratio of the bootstrapped standard errors, as well as use the empirical variance and covariances to see whether that ratio is consistent with the theory above.</p>
+
+
+
+<p class="wp-block-paragraph">Data details:</p>
+
+
+
+<ul class="wp-block-list">
+<li>Model: <code>Qwen/Qwen2-0.5B-Instruct</code></li>
+
+
+
+<li>Quantizations: full-precison and nf8</li>
+
+
+
+<li>Prompt: “What color is the sky?”</li>
+
+
+
+<li>Maximum response length: 128 tokens</li>
+
+
+
+<li>n=200 responses from each of uncoupled full-precision and uncoupled nf8</li>
+</ul>
+
+
+
+<h1 class="wp-block-heading">Results</h1>
+
+
+
+<p class="wp-block-paragraph">The bootstrapped (10,000 resamples) standard errors and their ratio:</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+Paired estimator SE = 0.0933
+Cross-product estimator SE = 0.0590
+Ratio of SEs = 0.632
+</pre></div>
+
+
+<p class="wp-block-paragraph">The empirical variance and covariances. (Note that cov_col varies the full response and cov_row varies the nf8 response.)</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+var = 1.791
+cov_col = 0.393
+cov_row = 0.272
+</pre></div>
+
+
+<p class="wp-block-paragraph">Plugging this into the formula above, we get a predicted SE ratio of 0.612, close to what we got from bootstrapping.</p>
+
+
+
+<h1 class="wp-block-heading">Discussion</h1>
+
+
+
+<p class="wp-block-paragraph">The achieved SE reduction of 0.632 is as much reduction as we&#8217;d get by increasing sample size by about 2.5x, so it&#8217;s helpful. That said, it&#8217;s much worse than best possible reduction, <code>sqrt(1/n) = 0.071</code>.</p>
+
+
+
+<p class="wp-block-paragraph">To understand why the ratio came out higher than ideal, it&#8217;s helpful to look at the matrix of LCPs.</p>
+
+
+
+<figure class="wp-block-image size-large"><a href="https://masharpe.wordpress.com/wp-content/uploads/2024/07/lcp_matrix.png"><img data-attachment-id="2165" data-permalink="https://masharpe.wordpress.com/2024/07/14/estimating-mean-uncoupled-lcp-using-cross-product-averaging/lcp_matrix/" data-orig-file="https://masharpe.wordpress.com/wp-content/uploads/2024/07/lcp_matrix.png" data-orig-size="353,392" data-comments-opened="1" data-image-title="lcp_matrix" data-image-description="" data-image-caption="" data-large-file="https://masharpe.wordpress.com/wp-content/uploads/2024/07/lcp_matrix.png?w=353" loading="lazy" width="353" height="392" src="https://masharpe.wordpress.com/wp-content/uploads/2024/07/lcp_matrix.png?w=353" alt="" class="wp-image-2165" srcset="https://masharpe.wordpress.com/wp-content/uploads/2024/07/lcp_matrix.png 353w, https://masharpe.wordpress.com/wp-content/uploads/2024/07/lcp_matrix.png?w=135 135w, https://masharpe.wordpress.com/wp-content/uploads/2024/07/lcp_matrix.png?w=270 270w" sizes="auto, (max-width: 353px) 100vw, 353px" /></a><figcaption class="wp-element-caption">The LCP matrix.<br>Each row is one full-precision response and each column one nf8 response.</figcaption></figure>
+
+
+
+<p class="wp-block-paragraph">Observe that there appears to be a lot of correlation within rows and columns. For example, there&#8217;s a row that&#8217;s nearly all zeros, and multiple rows that are mostly 1.</p>

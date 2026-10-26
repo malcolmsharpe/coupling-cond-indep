@@ -1,0 +1,96 @@
+
+<p class="wp-block-paragraph">In <a href="https://masharpe.wordpress.com/2024/09/23/general-lemma-for-simultaneously-maximal-coupling/">a recent post</a>, I showed a proof for a lemma that, together with easy induction, proves NCFOC, and, more generally, SMCBN. The lemma sets up an LP and proves that every optimal solution of the LP satisfies the desired properties. But the original motivation for studying this problem was to create <em>algorithms</em> for coupling, and the lemma proof has two related problems in that regard:</p>
+
+
+
+<ul class="wp-block-list">
+<li>The proof only works for random variables that range over finite vocabularies, not infinite vocabularies.</li>
+
+
+
+<li>Even if the vocabulary is finite, the LP will typically be prohibitively large, making it impractical to solve.</li>
+</ul>
+
+
+
+<p class="wp-block-paragraph">So, to achieve practical algorithms, we need to find an alternative proof for the lemma. This may not be easy.</p>
+
+
+
+<p class="wp-block-paragraph">To aid progress towards the full lemma, let&#8217;s solve a simpler problem: altering the given joint distribution so that it maximally couples one particular specified element <code>a in Sigma</code>, while preserving any existing maximal couplings of index subsets.</p>
+
+
+
+<h1 class="wp-block-heading">Solution</h1>
+
+
+
+<p class="wp-block-paragraph">We&#8217;ll make use of the exchange move we used in the lemma, i.e.</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+(a,b) (c,a) =&gt; (a,a) (c,b)
+</pre></div>
+
+
+<p class="wp-block-paragraph">The challenge is applying this exchange move efficiently.</p>
+
+
+
+<p class="wp-block-paragraph">We begin by sampling from the given joint. There are four cases (where b != a and c != a):</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+(a,a)
+(a,b)
+(c,a)
+(c,b)
+</pre></div>
+
+
+<p class="wp-block-paragraph">The cases <code>(a,a)</code> and <code>(c,b)</code> will be accepted as-is.</p>
+
+
+
+<p class="wp-block-paragraph">We&#8217;ll say that the case <code>(a,b)</code> <em>demands</em> Y=a and the case <code>(c,a)</code> <em>supplies</em> Y=a. The actual amount of Y=a moved around we&#8217;ll call the <em>flow</em>, where <code>flow = min{demand, supply}</code>. We have</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+demand = P&#91;X=a] - P&#91;X=a,Y=a]
+supply = P&#91;Y=a] - P&#91;X=a,Y=a]
+flow = min{P&#91;X=a],P&#91;Y=a]} - P&#91;X=a,Y=a]
+</pre></div>
+
+
+<p class="wp-block-paragraph">In case <code>(a,b)</code>, with probability <code>flow / demand</code>, replace Y=b with Y=a. (Otherwise, we keep Y=b.)</p>
+
+
+
+<p class="wp-block-paragraph">In case <code>(c,a)</code>, with probability <code>flow / supply</code>, we&#8217;ll replace Y=a. (Otherwise, we keep Y=a.) We sample the replacement b with probability <code>P[Y=b | Y != X, X=a]</code>. There are two reasonable options for the algorithm for sampling the replacement:</p>
+
+
+
+<ul class="wp-block-list">
+<li>Use rejection sampling by sampling b with probability <code>P[Y=b | X=a]</code> until b != a. To use this option, we&#8217;d need to check that the number of samples drawn isn&#8217;t too large.</li>
+
+
+
+<li>Assume that the given joint distribution supports directly sampling b with probability <code>P[Y=b | Y != X, X=a]</code>. This is in fact possible for the joint distributions of interest to us, but it does require a proof.</li>
+</ul>
+
+
+
+<h1 class="wp-block-heading">Formulas for acceptance and rejection probabilities</h1>
+
+
+
+<p class="wp-block-paragraph">I&#8217;m unsure of the usefulness of these formulas, but here they are for later reference:</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+flow / demand = (min{pX, pY} - pXY) / (pX - pXY)
+1 - flow/demand = (pX - min{pX, pY}) / (pX - pXY)
+</pre></div>
+
+
+<p class="wp-block-paragraph">And similarly for <code>flow / supply</code>.</p>

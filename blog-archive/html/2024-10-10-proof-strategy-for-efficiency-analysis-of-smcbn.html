@@ -1,0 +1,209 @@
+
+<p class="wp-block-paragraph">In moving towards writing a rough draft of a preprint for simultaneously maximal coupling of Bayesian networks (SMCBN), the only large remaining piece is the efficiency analysis: in particular, how many samples are drawn from the given marginal distributions? Before, <a href="https://masharpe.wordpress.com/2024/10/05/more-proofs-of-properties-of-the-maximal-recoupling-algorithm/">we&#8217;ve analyzed the efficiency of MRC in isolation</a>, and SMCBN increases the difficulty by nesting many calls to MRC interleaved with other subroutines.</p>
+
+
+
+<p class="wp-block-paragraph">To ease analysis, we&#8217;ll make a minor alteration to <a href="https://masharpe.wordpress.com/2024/10/08/full-pseudocode-for-sampling-from-a-simultaneous-maximal-coupling-of-bayesian-networks/">the SMCBN pseudocode presented previously</a>. In that post, BuildJoint applied to Leaf used the classic maximal coupling (CMC) algorithm. But we&#8217;ve noted before that <a href="https://masharpe.wordpress.com/2024/10/01/key-subroutine-for-simultaneously-maximal-coupling/">MRC generalizes CMC</a>, so we can rewrite that case of BuildJoint to use MRC instead of CMC:</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+BuildJoint(Leaf mX mY):
+    1. j &lt;- Trivial(mX, mY)
+    2. Return MaximalRecoupling(j)
+
+Trivial : Marginal E -&gt; Marginal E -&gt; Joint E
+
+Trivial(mX, mY) =
+    LX(x) = mX.L(x)
+    LY(y) = mY.L(y)
+    sampX():
+        1. Return mX.samp()
+    sampY|X(_):
+        1. Return mY.samp()
+</pre></div>
+
+
+<p class="wp-block-paragraph">Now we&#8217;re ready to begin the analysis. Due to its complexity, I haven&#8217;t filled in the details yet, so this post just presents a proof strategy.</p>
+
+
+
+<p class="wp-block-paragraph">The key question: how many of each leaf sampling operation is expected during one call of Sample? (TODO: ChainRule also does sampling, so it requires its own analysis, which I haven&#8217;t begun yet.)</p>
+
+
+
+<p class="wp-block-paragraph">Fix one leaf.</p>
+
+
+
+<h1 class="wp-block-heading">mX.samp</h1>
+
+
+
+<p class="wp-block-paragraph">First, the easy one: mX.samp.</p>
+
+
+
+<p class="wp-block-paragraph"><strong>Claim.</strong> mX.samp is invoked exactly once.</p>
+
+
+
+<p class="wp-block-paragraph"><strong>Proof sketch.</strong> Observe it&#8217;s only called during recursive invocation of sampX. This happens exactly once, in step 2 of Sample. <strong>[]</strong></p>
+
+
+
+<h1 class="wp-block-heading">mY.samp</h1>
+
+
+
+<p class="wp-block-paragraph"><strong>Claim.</strong> The expected number of calls to mY.samp is at most 1.</p>
+
+
+
+<p class="wp-block-paragraph"><strong>Proof strategy.</strong></p>
+
+
+
+<p class="wp-block-paragraph">Consider the call stack when mY.samp is called on this leaf. For some k that is the same for every invocation, the call stack will be:</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+MRC^1, Build^1, MRC^2, Build^2, ..., MRC^k, Build^k
+</pre></div>
+
+
+<p class="wp-block-paragraph">where, for 1 &lt;= i &lt;= k-1, &#8220;Build^i&#8221; is either TensorProduct or ChainRule, and &#8220;Build^k&#8221; is Trivial.</p>
+
+
+
+<p class="wp-block-paragraph">For 1 &lt;= i &lt;= k, use <code>[-]^i</code> to refer to the equivalence class mapping used by MRC^i.</p>
+
+
+
+<p class="wp-block-paragraph">We&#8217;ll use mutual induction to prove, for every 1 &lt;= i &lt;= k,</p>
+
+
+
+<ul class="wp-block-list">
+<li>For each <code>[x]^i</code>, <code>E[calls of MRC^i.sampY|X([x]^i)] &lt;= P[[X]^i = [x]^i]</code>.</li>
+
+
+
+<li>For each <code>[x]^i</code>, <code>E[calls of Build^i.sampY|X([x]^i)] &lt;= P[[X]^i = [x]^i]</code>.</li>
+</ul>
+
+
+
+<p class="wp-block-paragraph">Once we have proven that, we will know that, for all <code>[x]^k</code>,</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+E&#91;calls of Build^k.sampY|X(&#91;x]^k)] &lt;= P&#91;&#91;X]^k = &#91;x]^k]
+</pre></div>
+
+
+<p class="wp-block-paragraph">So,</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+E&#91;calls of mY.samp]
+    = E&#91;calls of Trivial.sampY|X]
+    = sum_{&#91;x]^k} E&#91;calls of Trivial.sampY|X(&#91;x]^k)]
+    = sum_{&#91;x]^k} E&#91;calls of Build^k.sampY|X(&#91;x]^k)]
+    &lt;= sum_{&#91;x]^k} P&#91;&#91;X]^k = &#91;x]^k]
+    = 1
+</pre></div>
+
+
+<p class="wp-block-paragraph">which is the claim.</p>
+
+
+
+<p class="wp-block-paragraph">Thus it&#8217;s enough to work through the induction. We need: a base case for MRC^1; an inductive step from MRC^i to Build^i; and an inductive step from Build^i to MRC^{i+1}.</p>
+
+
+
+<h2 class="wp-block-heading">Base case (MRC^1)</h2>
+
+
+
+<p class="wp-block-paragraph">We must show</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+forall &#91;x]^1, E&#91;calls of MRC^1.sampY|X(&#91;x]^1)] &lt;= P&#91;&#91;X]^1 = &#91;x]^1]
+&lt;=&gt; forall x, E&#91;calls of MRC^1.sampY|X(x)] &lt;= P&#91;X = x]
+</pre></div>
+
+
+<p class="wp-block-paragraph">which is obvious since this call only occurs in step 3 of Sample. (In fact, the inequality holds with equality.)</p>
+
+
+
+<h2 class="wp-block-heading">Inductive step from MRC^i to Build^i</h2>
+
+
+
+<p class="wp-block-paragraph">Note: This is the part with a TODO that makes the proof not complete.</p>
+
+
+
+<p class="wp-block-paragraph">Given 1 &lt;= i &lt;= k, we need to show that if, for each <code>[x]^i</code>,</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+E&#91;calls of MRC^i.sampY|X(&#91;x]^i)] &lt;= P&#91;&#91;X]^i = &#91;x]^i]
+</pre></div>
+
+
+<p class="wp-block-paragraph">holds, then, for each <code>[x]^i</code>,</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+E&#91;calls of Build^i.sampY|X(&#91;x]^i)] &lt;= P&#91;&#91;X]^i = &#91;x]^i]
+</pre></div>
+
+
+<p class="wp-block-paragraph">The handwavy intuitive justification: if we call <code>MRC^i.sampY|X([x]^i)</code> exactly expected <code>P[[X]^i = [x]^i]</code> times, that&#8217;s the same as just running <code>MRC^i</code> (to sample both X and Y), which <a href="https://masharpe.wordpress.com/2024/10/05/more-proofs-of-properties-of-the-maximal-recoupling-algorithm/">we have seen previously</a> makes at most <code>P[[X]^i = [x]^i]</code> expected calls to <code>Build^i.sampY|X([x]^i)</code>. And obviously if the inequality is instead strict, so there are fewer calls to <code>MRC^i.sampY|X</code>, that can only reduce the number of calls to <code>Build^i.sampY|X</code>.</p>
+
+
+
+<h2 class="wp-block-heading">Inductive step from Build^i to MRC^{i+1}</h2>
+
+
+
+<p class="wp-block-paragraph">Take 1 &lt;= i &lt;= k-1.</p>
+
+
+
+<p class="wp-block-paragraph">This part is thankfully easier, since Build^i is either TensorProduct or ChainRule, and both of those make exactly one subcall per call.</p>
+
+
+
+<p class="wp-block-paragraph">We need to show that if, for each <code>[x]^i</code>,</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+E&#91;calls of Build^i.sampY|X(&#91;x]^i)] &lt;= P&#91;&#91;X]^i = &#91;x]^i]
+</pre></div>
+
+
+<p class="wp-block-paragraph">holds, then, for each <code>[x]^{i+1}</code>,</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+E&#91;calls of MRC^{i+1}.sampY|X(&#91;x]^{i+1}) &lt;= P&#91;&#91;X]^{i+1} = &#91;x]^{i+1}]
+</pre></div>
+
+
+<p class="wp-block-paragraph">To see this, for each <code>[x]^{i+1}</code>, observe:</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+E&#91;calls of MRC^{i+1}.sampY|X(&#91;x]^{i+1})
+    = sum_{&#91;x']^i s.t. &#91;x']^{i+1} = &#91;x]^{i+1}} E&#91;calls of Build^i.sampY|X(&#91;x']^i)]
+    &lt;= sum_{&#91;x']^i s.t. &#91;x']^{i+1} = &#91;x]^{i+1}} P&#91;&#91;X]^i = &#91;x']^i]
+    = P&#91;&#91;X]^{i+1} = &#91;x]^{i+1}]
+</pre></div>
+
+
+<p class="wp-block-paragraph">as needed.</p>

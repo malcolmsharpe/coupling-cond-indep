@@ -1,0 +1,123 @@
+
+<p class="wp-block-paragraph"><a href="https://masharpe.wordpress.com/2024/10/17/organizing-mrc-properties/">MRC&#8217;s effect on subcouplings is reasonably well sketched out in the irreducible case</a>, but the reducible case offers some complication. This post sketches approaches.</p>
+
+
+
+<h1 class="wp-block-heading">Proving loop effect</h1>
+
+
+
+<h2 class="wp-block-heading">Irreducible case</h2>
+
+
+
+<p class="wp-block-paragraph">First, recall what we did for the irreducible case.</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+P = E_t&#91;g(t)]
+Phat = E_t&#91;ghat(t)]
+</pre></div>
+
+
+<p class="wp-block-paragraph">where</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+g(t) = sum_{i=1}^l e_{x_{i-1} x_i}
+ghat(t) = sum_{i=1}^{l-1} e_{x_i x_i} + e_{x_0 x_l}
+</pre></div>
+
+
+<p class="wp-block-paragraph">We want to show</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+P(S, E\S) &gt;= Phat(S, E\S)
+</pre></div>
+
+
+<p class="wp-block-paragraph">which we&#8217;ll obtain by showing</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+g(t)(S,E\S) &gt;= ghat(t)(S,E\S)
+</pre></div>
+
+
+<p class="wp-block-paragraph">Observe that the right-hand-side is either 0 or 1. The case where it&#8217;s 0 is vacuous.</p>
+
+
+
+<p class="wp-block-paragraph">If the right-hand-side is 1, then <code>x_0 in S, x_l not in S</code>, so there is i such that <code>x_{i-1} in S, x_i not in S</code>. Then</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+g(t)(S,E\S) &gt;= (e_{x_{i-1} x_i})(S,E\S) = 1
+</pre></div>
+
+
+<p class="wp-block-paragraph">which completes the proof.</p>
+
+
+
+<h1 class="wp-block-heading">Reducible case</h1>
+
+
+
+<p class="wp-block-paragraph">Reducibility doesn&#8217;t change the relationship of g and ghat, but it changes the relationships of P to g and Phat to ghat.</p>
+
+
+
+<p class="wp-block-paragraph">The impact of reducibility:</p>
+
+
+
+<ul class="wp-block-list">
+<li>For non-self arcs of Phat, equality still holds: for all v != w, <code>Phat(v,w) = E_t[ghat(t)(v,w)]</code>. So still have</li>
+</ul>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+Phat(S,E\S) = E_t&#91;ghat(S,E\S)] &lt;= E_t&#91;g(t)(S,E\S)]
+</pre></div>
+
+
+<ul class="wp-block-list">
+<li>We have seen in previous posts that <code>E_t[g(t)] &lt;= P</code>, so</li>
+</ul>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+E_t&#91;g(t)(S,E\S)] &lt;= P(S,E\S)
+</pre></div>
+
+
+<p class="wp-block-paragraph">That&#8217;s enough to adapt the proof.</p>
+
+
+
+<h1 class="wp-block-heading">Other notes</h1>
+
+
+
+<p class="wp-block-paragraph">Every non-self arc of Phat is contributed fully by ghat, even in the reducible case.</p>
+
+
+
+<p class="wp-block-paragraph">Contribution is all-or-nothing: for each arc vw, if vw is reachable by source/sink, then</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+P(v,w) = E_t&#91;g(t)(v,w)]
+Phat(v,w) = E_t&#91;ghat(t)(v,w)]
+</pre></div>
+
+
+<p class="wp-block-paragraph">Otherwise,</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+E_t&#91;g(t)(v,w)] = 0
+E_t&#91;ghat(t)(v,w)] = 0
+</pre></div>

@@ -1,0 +1,104 @@
+
+<p class="wp-block-paragraph">For creative writing tasks, users must choose: model, quantization, prompt, and sampling parameters. To evaluate two options, the most accurate method is to generate responses from each and note which gives the preferred result, as judged by a human evaluator. Human evaluator time is expensive, so we&#8217;d like to make their job as efficient as possible.</p>
+
+
+
+<p class="wp-block-paragraph">(For convenience, I&#8217;ll use &#8216;model&#8217; as a shorthand for &#8216;model, quantization, prompt, sampling parameters&#8217;. Using this terminology, the model fully specifies the probability distribution of the next token.)</p>
+
+
+
+<p class="wp-block-paragraph">A difficulty with comparing responses is that the random number generation introduces an additional source of variance that obscures the model difference. Even if the same model is used to generate both responses, the responses may have differing quality levels.</p>
+
+
+
+<p class="wp-block-paragraph">For deterministic tasks, such as answering a multiple choice question, that additional RNG variance doesn&#8217;t apply. But it&#8217;s particularly problematic for creative writing, where RNG variance is desirable.</p>
+
+
+
+<p class="wp-block-paragraph">In this post, I propose a method for making the responses more similar, so that the difference between them more clearly isolates the difference between the models. In particular, if the two models are identical, the responses will be identical, too.</p>
+
+
+
+<h1 class="wp-block-heading">Review of speculative sampling</h1>
+
+
+
+<p class="wp-block-paragraph">(See <a href="https://blog.dust.tt/speculative-sampling-llms-writing-a-lot-faster-using-other-llms/ ">https://blog.dust.tt/speculative-sampling-llms-writing-a-lot-faster-using-other-llms/ </a>for a more standard explanation.)</p>
+
+
+
+<p class="wp-block-paragraph">Let U be a finite set (e.g. tokens or characters) and let P and Q be two different discrete probability distributions over U. Let <code>X ~ P</code> and <code>Y ~ Q</code>.</p>
+
+
+
+<p class="wp-block-paragraph">We&#8217;d like to maximize <code>P(X = Y)</code> by carefully designing the joint distribution <code>R(X,Y)</code>. One procedure for obtaining the optimal joint distribution R is:</p>
+
+
+
+<ul class="wp-block-list">
+<li>Sample <code>X ~ P</code>.</li>
+
+
+
+<li>If <code>Q(X) &gt; P(X)</code>, set <code>Y = X</code>.</li>
+
+
+
+<li>Otherwise, with probability <code>Q(X) / P(X)</code>, set <code>Y = X</code>.</li>
+
+
+
+<li>Otherwise, sample Y with weight <code>max{0, Q(Y) - P(Y)}</code>.</li>
+</ul>
+
+
+
+<p class="wp-block-paragraph">P is called the &#8220;draft model&#8221; and Q the &#8220;target model&#8221;. In typical applications of speculative sampling, the draft model is smaller and cheaper to evaluate than the target model, but that&#8217;s not generally true of our application.</p>
+
+
+
+<h1 class="wp-block-heading">Extending to auto-regressive sequence sampling</h1>
+
+
+
+<p class="wp-block-paragraph">In the sequence case, we care not just about whether the two responses are entirely equal but also about whether they are similar, for example as quantified by edit distance. If we apply the technique from the previous section directly, then, whenever the draft sequence is resampled, the entire sequence would be thrown out, which is wasteful of edit distance.</p>
+
+
+
+<p class="wp-block-paragraph">Instead, we&#8217;ll generate token-by-token, as with standard speculative sampling, until a resampling occurs. That way, at least some prefix of the responses will be equal, after which they diverge.</p>
+
+
+
+<p class="wp-block-paragraph">After diverging, can we reduce the edit distance for the remainder of the response? Yes! We can generate as much as we like of each response separately, then resume joint sampling according to some heuristic. For example, we might generate each response until it reaches a newline, then resume joint sampling. We could even imagine using reinforcement learning to train a language-model-based heuristic where the reward is the minimization of edit distance.</p>
+
+
+
+<h1 class="wp-block-heading">Tokenizer independence</h1>
+
+
+
+<p class="wp-block-paragraph">Suppose we&#8217;re comparing two models that use different tokenizers. It&#8217;s not immediately obvious how speculative sampling applies.</p>
+
+
+
+<p class="wp-block-paragraph">The trick is that any model that auto-regressively generates tokens implies a model that auto-regressively generates characters. To see that fact, take the token distribution and marginalize out all but the first character. After sampling the first character of the token, use the conditional token distribution (conditioned on the first character) to sample the next character, and so on.</p>
+
+
+
+<p class="wp-block-paragraph">By interpreting the two models as auto-regressive character generators, we can do speculative sampling on characters instead of tokens, making our technique tokenizer-independent.</p>
+
+
+
+<p class="wp-block-paragraph">Being tokenizer-independent brings a benefit for the rejoining heuristic too: it gives us the flexibility to, for example, generate each sequence until reaching a space character, then rejoining from there on.</p>
+
+
+
+<h1 class="wp-block-heading">Applications</h1>
+
+
+
+<p class="wp-block-paragraph">Who wants this? It&#8217;s a feature, not a product. It would fit best into a playground-like tool oriented towards creative writing tasks. Ideally, the tool would already be designed for model comparison and prompt engineering, allowing comparison of two responses.</p>
+
+
+
+<p class="wp-block-paragraph">The Chatbot Arena is an example of a tool where this feature would be useful, but a crucial limitation is that token probability distributions are required. Many APIs don&#8217;t provide token probabilities, and even with an API that does, the procedure would require making one call per token, which would be very slow. So this is best implemented closer to the model itself, at the same layer where you would implement ordinary speculative sampling.</p>

@@ -1,0 +1,298 @@
+
+<p class="wp-block-paragraph">Continuing on from <a href="https://masharpe.wordpress.com/2024/10/04/progress-towards-proving-properties-of-the-maximal-recoupling-algorithm/">my previous post</a>, property status:</p>
+
+
+
+<ul class="wp-block-list">
+<li>Coupling validity:
+<ul class="wp-block-list">
+<li>Marginal of X: obvious.</li>
+
+
+
+<li>Marginal of Y: previously.</li>
+</ul>
+</li>
+
+
+
+<li>Coupling maximality: obvious.</li>
+
+
+
+<li>Termination: previously.</li>
+
+
+
+<li>Efficiency: today.</li>
+
+
+
+<li>Effect on subcouplings:
+<ul class="wp-block-list">
+<li>Preservation of maximal subcouplings: today.</li>
+
+
+
+<li>&#8220;Coupling TVD &lt;= 2 * loss improvement&#8221;: todo.</li>
+</ul>
+</li>
+</ul>
+
+
+
+<p class="wp-block-paragraph">The proofs remain quite sketchy, but I believe they are correct and complete (unlike <a href="https://masharpe.wordpress.com/2024/10/02/details-of-maximal-recouplings-effect-on-subcouplings/">the &#8220;proof idea&#8221; on 2024-10-02</a>), aside from parts marked TODO.</p>
+
+
+
+<h1 class="wp-block-heading">Analysis framework</h1>
+
+
+
+<p class="wp-block-paragraph">We&#8217;ll transform the MRC loop so we can analyze it as a random walk.</p>
+
+
+
+<h2 class="wp-block-heading">Unaugmented graph</h2>
+
+
+
+<p class="wp-block-paragraph">Let G0 = (V0, A0) be a directed graph whose nodes V0 are the values taken by X and Y. The arcs A0 are those with nonzero weight, where the weight of arc <code>vw</code> is <code>W0_{vw} = P[X = v, Y = w]</code>. (Note that self-loops are included.) We call a node v a source if it has more out-weight than in-weight and a sink if it has more in-weight than out-weight.</p>
+
+
+
+<p class="wp-block-paragraph">Observe that, for every node v in V0,</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+sum_w W0_{wv} = P&#91;Y = v]
+sum_w W0_{vw} = P&#91;X = v]
+</pre></div>
+
+
+<p class="wp-block-paragraph">So the sum of sink deficits is</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+sum_v max{0, sum_w (W0_{wv} - W0_{vw})}
+     = sum_v max{0, P&#91;Y=v] - P&#91;X=v]}
+     = TVD(X,Y)
+</pre></div>
+
+
+<p class="wp-block-paragraph">and likewise the sum of source excesses is</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+sum_v max{0, sum_w (W0_{vw} - W0_{wv})}
+    = TVD(X,Y)
+</pre></div>
+
+
+<h2 class="wp-block-heading">Augmented graph</h2>
+
+
+
+<p class="wp-block-paragraph">G0 is not directly usable, since a random walk doesn&#8217;t take into account that we begin at a source and end at a sink.</p>
+
+
+
+<p class="wp-block-paragraph">Add an auxiliary node aux to obtain G = (V,A) and weights W where <code>V = V0 U {aux}</code> with, forall v in V0,</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+W_{aux v} = max{0, sum_w(W0_{vw} - W0{wv})}
+W_{v aux} = max{0, sum_w(W0_{wv} - W0{vw})}
+</pre></div>
+
+
+<p class="wp-block-paragraph">Then G is balanced: at every node, the in-weight and out-weight are equal. Also, <code>sum_v W_{aux v} = TVD(X,Y)</code>. For conciseness later, let <code>D = TVD(X,Y)</code>.</p>
+
+
+
+<h2 class="wp-block-heading">Random walk</h2>
+
+
+
+<p class="wp-block-paragraph">Let&#8217;s now consider random walks on the balanced weighted directed graph G, where at each step the next arc is chosen with probability proportional to its weight. We can express the transition matrix as follows:</p>
+
+
+
+<p class="wp-block-paragraph">For v in V, let</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+p_v = sum_w W_{vw} = 1^T W
+p^{-1}_v = (p_v)^-1
+</pre></div>
+
+
+<p class="wp-block-paragraph">The transition matrix A is then given by</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+A = Diag(p^{-1}) W
+</pre></div>
+
+
+<p class="wp-block-paragraph">Observe that</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+p^T A
+    = p^T Diag(p^{-1}) W
+    = 1^T W
+    = p
+</pre></div>
+
+
+<p class="wp-block-paragraph">so p is an unnormalized stationary distribution.</p>
+
+
+
+<p class="wp-block-paragraph">Moreover, when a node is drawn from this stationary distribution, the probability of the next arc being vw is proportional to <code>W_{vw}</code>.</p>
+
+
+
+<p class="wp-block-paragraph">Other assorted facts that we&#8217;ll need:</p>
+
+
+
+<ul class="wp-block-list">
+<li><code>1^T W 1 = 1 + 2 D</code></li>
+
+
+
+<li><code>1^T p = 1 + 2 D</code></li>
+
+
+
+<li><code>p_aux = D</code></li>
+</ul>
+
+
+
+<h2 class="wp-block-heading">Expected traversal count per arc</h2>
+
+
+
+<h3 class="wp-block-heading">Irreducible case</h3>
+
+
+
+<p class="wp-block-paragraph">Assume irreducibility.</p>
+
+
+
+<p class="wp-block-paragraph">Begin an infinite random walk at aux. Note that the Markov chain may be periodic, so we don&#8217;t necessarily converge to a stationary distribution. But we can use the Cesaro limit (TODO: presumably this is well-known Markov chain theory)</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+lim_{n -&gt; inf} (1/n) sum_{k=1}^n e_{aux} A^n = p
+</pre></div>
+
+
+<p class="wp-block-paragraph">(TODO: More should be said here about how the next point follows from the previous.)</p>
+
+
+
+<p class="wp-block-paragraph">Then, for all vw,</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+E&#91;# traversals of vw per visit to aux]
+    = (W_{vw} / sum(W)) / (p_{aux} / sum(p))
+    = (W_{vw} / (1 + 2 D)) / (D / (1 + 2 D))
+    = W_{vw} / D
+</pre></div>
+
+
+<p class="wp-block-paragraph">Since the probability of reaching the loop in MRC is D, we have</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+E&#91;# traversals of vw per execution of MRC] = W_{vw}
+</pre></div>
+
+
+<h3 class="wp-block-heading">General case</h3>
+
+
+
+<p class="wp-block-paragraph">TODO</p>
+
+
+
+<p class="wp-block-paragraph">Get</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+E&#91;# traversals of vw per execution of MRC] &lt;= W_{vw}
+</pre></div>
+
+
+<h1 class="wp-block-heading">Efficiency</h1>
+
+
+
+<p class="wp-block-paragraph">We wish to bound the expected number of samples drawn from Y. A sample occurs when an arc vw is traversed, except if v or w is aux. So</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+E&#91;samples from Y per execution of MRC]
+    = sum_{v != aux, w != aux} E&#91;# traversals of vw per execution of MRC]
+    &lt;= sum_{v != aux, w != aux} W_{vw}
+    = 1
+</pre></div>
+
+
+<h1 class="wp-block-heading">Preservation of maximal subcouplings</h1>
+
+
+
+<p class="wp-block-paragraph">Let V0 be partitioned into equivalence classes <code>[-]</code> such that P was a maximal coupling of [X] and [Y]. Let Phat be the probability distribution induced by MRC.</p>
+
+
+
+<p class="wp-block-paragraph">We must prove that, for all c and d,</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+Phat&#91; &#91;X]=&#91;c], &#91;Y]=&#91;d] ] = P&#91; &#91;X]=&#91;c], &#91;Y]=&#91;d] ]
+</pre></div>
+
+
+<p class="wp-block-paragraph">If <code>[c] = [d]</code>, then by maximality of P for <code>[-]</code>,</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+Phat&#91; &#91;X]=&#91;c], &#91;Y]=&#91;d] ]
+    = Phat&#91; &#91;X]=&#91;Y]=&#91;c] ]
+    &lt;= P&#91; &#91;X]=&#91;Y]=&#91;c] ]
+    = P&#91; &#91;X]=&#91;c], &#91;Y]=&#91;d] ]
+</pre></div>
+
+
+<p class="wp-block-paragraph">Otherwise, <code>[c] != [d]</code>. If MRC returns <code>(b_1, b_{k+1})</code> with <code>[b_1] = [c]</code> and <code>[b_{k+1}] = [d]</code>, then, by maximality, there exists <code>1 &lt;= i &lt;= k</code> such that <code>[b_i] = [c]</code> and <code>[b_{i+1}] = [d]</code>. (TODO: More should be said about why this follows from maximality.) So</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+Phat&#91; &#91;X]=&#91;c], &#91;Y]=&#91;d] ]
+    &lt;= sum_{v,w s.t. &#91;v] = &#91;c], &#91;w] = &#91;d]} E&#91;# traversals of vw per MRC execution]
+    &lt;= sum_{v,w s.t. &#91;v] = &#91;c], &#91;w] = &#91;d]} W_{vw}
+    = P&#91; &#91;X]=&#91;c], &#91;Y]=&#91;d] ]
+</pre></div>
+
+
+<p class="wp-block-paragraph">Overall, we have</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+1
+    = sum_{&#91;c], &#91;d]} Phat&#91; &#91;X]=&#91;c], &#91;Y]=&#91;d] ]
+    &lt;= sum_{&#91;c], &#91;d]} P&#91; &#91;X]=&#91;c], &#91;Y]=&#91;d] ]
+    = 1
+</pre></div>
+
+
+<p class="wp-block-paragraph">so all the inequalities hold with equality, as needed.</p>

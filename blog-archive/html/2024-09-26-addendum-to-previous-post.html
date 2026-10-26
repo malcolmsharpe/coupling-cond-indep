@@ -1,0 +1,28 @@
+
+<p class="wp-block-paragraph">In the previous post, I neglected to use the assumption that X1 and Y1 are maximally coupled! This assumption is indeed necessary, because we must ensure that, during the sampling algorithm, whenever we sample using weights (i.e. unnormalized probabilities), the sum of weights is positive.</p>
+
+
+
+<p class="wp-block-paragraph">In step 2:</p>
+
+
+
+<ul class="wp-block-list">
+<li><code>P[X1 = Y1 = a1]</code> is nonzero due to having sampled it in step 1.</li>
+
+
+
+<li>The sum of the weights is the numerator of the first probability, so we only enter that part if the weight sum is nonzero.</li>
+</ul>
+
+
+
+<p class="wp-block-paragraph">In step 3, the two halves are similar, so we&#8217;ll just address sampling a2. Because X1 and Y1 are maximally coupled and we sampled a1 for X1 and did not sample a1 for Y1, we know <code>P[X1=a1] &gt; P[Y1=a1]</code>. Then the weight sum is:</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+sum_{a2} max{0, P&#91;X=a] - P&#91;Y=a]}
+    &gt;= sum_{a2} (P&#91;X=a] - P&#91;Y=a])
+    = P&#91;X1=a1] - P&#91;Y1=a1]
+    &gt; 0
+</pre></div>

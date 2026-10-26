@@ -1,0 +1,135 @@
+\documentclass{article}
+
+\usepackage[backend=biber,sorting=none]{biblatex}
+\addbibresource{mybib.bib}
+
+\usepackage{amsmath, amssymb}
+\usepackage{graphicx}
+
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\iidsim}{\overset{\text{iid}}{\sim}}
+\newcommand{\perpci}{\perp\!\!\!\perp}
+
+\title{Per-token-optimal Coupling Dominates Seed Reuse for Coupling Response Distributions}
+\author{Malcolm Sharpe}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+When qualitatively comparing two LLM response distributions, small differences are confounded by the stochasticity of generation. To control for this confound, a common approach is to reuse a seed. An alternative is to optimally couple the next-token distributions, inspired by speculative decoding. We prove that the optimal coupling method, compared to a broad class of seed reuse methods, achieves an equal or greater probability of agreement for every prefix value.
+\end{abstract}
+
+\section*{Introduction}
+
+Some LLM APIs provide a seed parameter \cite{sharpe2024blogseedparam}.
+Although perhaps originally intended for reproducibility across calls with equal inputs,
+it's also useful for controlling stochasticity for calls with different inputs.
+When used to couple two response distributions,
+we will call this per-token common random numbers (PTCRN).
+
+Standard speculative decoding \cite{leviathan2023fast} \cite{chen2023acceleratinglargelanguagemodel} implicitly defines a coupling of the response distributions of the draft model and target model.
+Though in that context the goal is to reduce generation latency,
+the same coupling can be applied for controlling stochasticity.
+Call this per-token optimal coupling (PTOC).
+
+The contribution of this paper is to prove that PTOC dominates every PTCRN scheme in a particular sense:
+every prefix value has at least as high a probability of agreement with PTOC as it does with PTCRN.
+As a corollary, PTCRN is also more effective at maximizing the length of the longest common prefix.
+
+\section*{Definitions}
+
+\subsection*{Seed Reuse}
+
+The behavior of seed reuse depends on the implementation of the response generation algorithm. As an example, huggingface's transformers \cite{wolf2020huggingfacestransformersstateoftheartnatural} uses \texttt{torch.\allowbreak multinomial} to sample from each next-token distribution in turn. When the seed is reused, it causes the corresponding calls to \texttt{torch.multinomial} to use the same random numbers.
+
+Inspired by that example implementation, the dependence of response generation on seed can be broadly modeled as follows:
+
+Let $\Sigma$ be a finite set of tokens. Let the response $X \in \Sigma^\N$ be given by, for all $i \geq 0$,
+
+\begin{itemize}
+    \item $X_i = f_X(U_i, X_{<i})$
+\end{itemize}
+
+where
+
+\begin{itemize}
+    \item $U_i \iidsim U[0,1)$
+    \item $f_X : [0,1) \times \Sigma^* \to \Sigma$
+\end{itemize}
+
+Then seed reuse simply uses the same random variables $U_i$ for two different token choice functions $f_X$ and $f_Y$. This puts it in the family of ``common random numbers'' schemes, as they are known in the variance reduction literature \cite{rubinstein2016simulation}, which motivates describing seed reuse as per-token common random numbers (PTCRN).
+
+\subsection*{Per-token Optimal Coupling (PTOC)}
+
+Standard speculative decoding \cite{leviathan2023fast} \cite{chen2023acceleratinglargelanguagemodel} optimally couples each pair of next-token distributions.
+
+The probability of agreement on a given next token can thus be calculated as follows, a well-known fact from optimal coupling \cite{angel2021pairwiseoptimalcouplingmultiple}. When using PTOC, for every $i \geq 0$ and $a \in \Sigma^\N$,
+
+\begin{equation}
+\begin{split}
+&P[X_i = Y_i = a_i \mid X_{<i} = Y_{<i} = a_{<i}] \\
+&\quad= \min \{ P[X_i = a_i \mid X_{<i} = a_{<i}], P[Y_i = a_i \mid Y_{<i} = a_{<i}] \}
+\end{split}
+\end{equation}
+
+\section*{Domination Theorem}
+
+\subsection*{Statement}
+
+\textbf{Theorem.} Assume $X$ and $Y$ are coupled using a PTCRN scheme. Then, for every $i \geq 0$ and $a \in \Sigma^\N$,
+
+\begin{equation}
+\begin{split}
+&P[X_{<i} = Y_{<i} = a_{<i}] \\
+&\quad\leq \prod_{j < i} \min \{ P[X_j = a_j \mid X_{<j} = a_{<j}], P[Y_j = a_j \mid Y_{<j} = a_{<j}] \}
+\end{split}
+\end{equation}
+
+Observe that, for PTOC, this inequality holds with equality.
+
+\subsection*{Conditional Independence Property}
+
+Every PTCRN scheme satisfies these two symmetric conditional independence properties: for all $i \geq 0$,
+
+\begin{itemize}
+    \item $X_i \perpci Y_{<i} \mid X_{<i}$
+    \item $Y_i \perpci X_{<i} \mid Y_{<i}$
+\end{itemize}
+
+The reason is that the value of $Y_{<i}$ only gives information about $U_{<i}$, not $U_i$, and $X_{<i}$ already contains all the relevant information about $U_{<i}$.
+
+\subsection*{Proof}
+
+We are now ready to show that PTOC dominates PTCRN.
+
+\textbf{Proof.}
+\begin{align*}
+&P[X_{<i} = Y_{<i} = a_{<i}] \\
+&\quad= \prod_{j < i} P[X_j = Y_j = a_j \mid X_{<j} = Y_{<j} = a_{<j}] \\
+&\quad\leq \prod_{j < i} \min \{ P[X_j = a_j \mid X_{<j} = Y_{<j} = a_{<j}], P[Y_j = a_j \mid X_{<j} = Y_{<j} = a_{<j}] \} \\
+&\quad= \prod_{j < i} \min \{ P[X_j = a_j \mid X_{<j} = a_{<j}], P[Y_j = a_j \mid Y_{<j} = a_{<j}] \}
+\end{align*}
+
+The reasons for each line:
+\begin{itemize}
+    \item Auto-regressive factorization.
+    \item Optimal coupling of two discrete distributions.
+    \item Conditional independence.
+\end{itemize}
+\hfill \(\square\)
+
+\section*{Related Work}
+
+It is possible to outperform PTOC at maximizing the probability of agreement of every prefix value,
+by breaking the conditional independence property with a more sophisticated coupling method \cite{sun2024blockverificationacceleratesspeculative_v1} \cite{sharpe2024blogapoc}.
+
+\section*{Discussion}
+
+The superiority of PTOC over PTCRN only applies when coupling two response distributions. For three or more response distributions, PTOC's performance is no longer achievable, an instance of a general fact for optimal coupling \cite{angel2021pairwiseoptimalcouplingmultiple}.
+
+\printbibliography
+
+\end{document}

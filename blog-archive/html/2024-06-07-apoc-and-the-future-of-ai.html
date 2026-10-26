@@ -1,0 +1,38 @@
+
+<p class="wp-block-paragraph">As discussed previously, All-Prefix Optimal Coupling (APOC) is a method for generating paired responses from two response distributions (induced by two LLMs, two prompts, two sampler configurations, etc.) such that the length of the longest common prefix (LCP) is maximized.</p>
+
+
+
+<p class="wp-block-paragraph">In this post, I&#8217;ll briefly speculate on how APOC fits into the future of AI, using two topics: auto-regressive token generation and test-time compute.</p>
+
+
+
+<h1 class="wp-block-heading">Auto-regressive token generation</h1>
+
+
+
+<p class="wp-block-paragraph">APOC requires auto-regressive token generation and has no obvious counterpart in the other currently popular generative paradigm, diffusion models. Both aspects are important: the auto-regression, which means the output is generated step by step; and the tokens, which means the output consists of strings of discrete tokens rather than vectors in a continuous space.</p>
+
+
+
+<p class="wp-block-paragraph">So APOC&#8217;s usefulness depends on the importance of auto-regressive token generation. Luckily for APOC, auto-regressive token generation if anything seems to be growing in popularity. OpenAI employees have hinted that its newest model GPT-4o generates all its outputs (text, audio, video) using auto-regressive token generation. More generally, tool-use capabilities of LLMs rely on text generation. Robotics, as far as I know, is also coming to use tokens for actions.</p>
+
+
+
+<h1 class="wp-block-heading">Test-time compute</h1>
+
+
+
+<p class="wp-block-paragraph">An important underexploited resource for AI today is &#8220;test-time compute&#8221;, as distinguished from training-time compute. It refers to compute spent at the moment you have a task for the AI to do. The compute is spent in order to get a high-quality answer.</p>
+
+
+
+<p class="wp-block-paragraph">Test-time compute has long been a key tool for game AI, such as AlphaGo, via search, but there are not yet good techniques for using it outside the domain of games. If such techniques could be invented, they would provide great benefits for the corresponding applications. (See Noam Brown&#8217;s interview on the Robot Brains podcast for a great discussion.)</p>
+
+
+
+<p class="wp-block-paragraph">One plausible direction for using test-time compute with LLMs is agentic workflows, where the LLM processes multiple queries in the course of solving the task. (Cognition AI&#8217;s software development agent Devin has been said to spend hours or even days on one task, if I remember correctly.) Though agents don&#8217;t work well yet, they seem like an idea that should work well someday.</p>
+
+
+
+<p class="wp-block-paragraph">For creating agentic workflows, prompt engineering is important. And this is where APOC becomes relevant: it can help illuminate the effect of small changes to a prompt. Oddly, though, I haven&#8217;t found any mention of fixed seeds being used for prompt engineering today, which is surprising.</p>

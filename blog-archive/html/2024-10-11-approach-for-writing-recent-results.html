@@ -1,0 +1,46 @@
+
+<p class="wp-block-paragraph">Over the past few months, starting <a href="https://masharpe.wordpress.com/2024/02/03/method-for-comparing-creative-writing-models-more-easily-inspired-by-speculative-sampling/">with this post on Feb 3</a>, I have investigated the application of coupling to LLM-inspired problems. At some point, I need to write up the fruits of this research.</p>
+
+
+
+<p class="wp-block-paragraph">My goal is to upload a preprint to arXiv. To do that, I need an arXiv-ready preprint. To obtain an arXiv-ready preprint, I need to extensively edit and polish a rough draft. To write a rough draft, I need a key idea to anchor it.</p>
+
+
+
+<p class="wp-block-paragraph">My original pick for the key idea was going to be &#8220;APOC&#8221; (All-Prefix-Optimal Coupling, though &#8220;All-Prefix-Maximal Coupling (APMC)&#8221; would have been a better choice of name): the surprising fact that per-token maximal coupling does not maximally couple whole responses, yet with care it&#8217;s possible to simultaneously maximal couple every prefix of the response. However, this turned out to have already been shown by Sun et al 2024 with the name &#8220;Greedy Block Verification&#8221;. Moreover, it turned out to have been shown earlier in other contexts, such as by <a href="https://arxiv.org/abs/1608.01511">Vollering 2016</a>, and the key ideas seem to go back at least as far as <a href="https://link.springer.com/article/10.1007/BF00539434">Griffeath 1975</a>.</p>
+
+
+
+<p class="wp-block-paragraph">Despite the lack of novelty, in hindsight it would have been useful to write my take on APMC. It would have been good writing practice, and my point-of-view may have some slight novelty to it, although it&#8217;s hard to say for sure given the massive amount of Markov chain literature on couplings.</p>
+
+
+
+<p class="wp-block-paragraph">What actually happened is that, after a period of discouragement, I found refuge in a conjecture about <a href="https://masharpe.wordpress.com/2024/07/11/conjecture-non-crossing-family-optimal-coupling/">simultaneously maximal coupling of independent variables</a>. I&#8217;ve searched many times to try to find this in the literature, and I have not, so it may actually be novel. If so, the reason would be that there is no independence between variables in the Markov chain setting, so there&#8217;s no reason for researchers in that area to consider this question.</p>
+
+
+
+<p class="wp-block-paragraph">It turns out that the solution to this conjecture involves an exceptionally beautiful gem of an algorithm, which I call the &#8220;maximal recoupling&#8221; (MRC) algorithm. It&#8217;s a tiny but non-obvious generalization of the classic maximal coupling algorithm, and remarkably does not seem to have been published before, as far as I can tell.</p>
+
+
+
+<p class="wp-block-paragraph">This time around, I&#8217;m resolved to write even if MRC turns out to be not novel, for the reasons I mentioned before: I need the writing practice, and my viewpoint might be novel even if the material isn&#8217;t. Moreover, I&#8217;ve looked hard enough to conclude that, if MRC is known, it&#8217;s not <em>well</em>-known.</p>
+
+
+
+<p class="wp-block-paragraph">As beautiful as MRC is, on its own it is not very motivated. Its motivation comes from simultaneously maximal coupling of independent varibles (SMC-I) or more generally Bayesian networks (SMC-BN). In turn, SMC-BN is motivated by SEDD LLMs. Just as APMC (or perhaps I should say SMC-AR, for &#8220;auto-regressive&#8221;) can allow spec dec and evaluation variance reduction for AR LLMs, SMC-BN may allow spec dec and evaluation variance reduction for SEDD LLMs.</p>
+
+
+
+<p class="wp-block-paragraph">But to include that motivation greatly expands the volume of material to write, to the point that I worry I would not finish even a rough draft, never mind an arXiv-ready preprint. For example, just <a href="https://masharpe.wordpress.com/2024/10/08/full-pseudocode-for-sampling-from-a-simultaneous-maximal-coupling-of-bayesian-networks/">the pseudocode for the SMC-BN algorithm already amounts to about 100 lines</a>. The analysis is also quite extensive and has some remaining minor holes that would need time to plug. Worse, I dread it, because much of the material, while not entirely obvious, is not as interesting as MRC.</p>
+
+
+
+<p class="wp-block-paragraph">Thus, faced with the possibility of having nothing to show for my work up to now, and having asked for advice, I have decided to employ a &#8220;fun first&#8221; approach: I&#8217;ll write about the fun part (MRC), without being troubled by its lack of motivation. The initial versions can also omit needed background. This makes the goal feel more achievable, and if I do at least get a rough draft presenting MRC, I&#8217;ll have a useful artifact even if I move on from the project before completing the other parts of it.</p>
+
+
+
+<p class="wp-block-paragraph">Another benefit of restricting the scope to just MRC is to focus me on creating a high-quality presentation of that small amount of material. I&#8217;ll find it more rewarding to produce a clear and concise exposition of MRC alone than a sprawling mess for SMC-BN as a whole.</p>
+
+
+
+<p class="wp-block-paragraph">The first step is to begin assembling my notes on MRC specifically into a rough draft.</p>

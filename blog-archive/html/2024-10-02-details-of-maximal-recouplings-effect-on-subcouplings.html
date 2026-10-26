@@ -1,0 +1,150 @@
+
+<p class="wp-block-paragraph">In <a href="https://masharpe.wordpress.com/2024/10/01/key-subroutine-for-simultaneously-maximal-coupling/">my previous post</a>, I presented the maximal recoupling (MRC) algorithm, a (to my taste) delightfully elegant algorithm for modifying a coupling to become maximal while preserving any pre-existing maximal subcouplings. What makes MRC special, compared to standard maximal coupling, is the final pair of properties I conjectured in that post: the equality probability of every subcoupling improves; and maximal subcouplings are preserved without any change.</p>
+
+
+
+<p class="wp-block-paragraph">It&#8217;s then natural to ask whether, if a subcoupling was nearly maximal to begin with, it might change at most a little. To that end, I&#8217;ve unified the conjectured properties into a single one.</p>
+
+
+
+<h1 class="wp-block-heading">Conjecture</h1>
+
+
+
+<p class="wp-block-paragraph">Take a finite set E and random variables X and Y taking values in E. Then the MRC algorithm samples from a maximal coupling Phat of X and Y such that, for every partition of E into equivalence classes <code>[-]</code>, we have</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+TVD( (&#91;X],&#91;Y])_P, (&#91;X],&#91;Y])_Phat )
+    &lt;= 2 (Phat&#91;&#91;X] = &#91;Y]] - P&#91;&#91;X] = &#91;Y]])
+</pre></div>
+
+
+<p class="wp-block-paragraph">In words, the change in distribution (as measured by total variation distance) is upper-bounded by twice the improvement of equality probability.</p>
+
+
+
+<p class="wp-block-paragraph">The two originally conjectured properties are recovered as follows:</p>
+
+
+
+<ul class="wp-block-list">
+<li>Since TVD is non-negative, the equality probability cannot decrease.</li>
+
+
+
+<li>If the equality probability was already maximum, then TVD must be zero.</li>
+</ul>
+
+
+
+<h1 class="wp-block-heading">Proof idea</h1>
+
+
+
+<p class="wp-block-paragraph">Imagine representing the original joint by a weighted directed graph G with node-set E and arc-set A. MRC decomposes G into a sum of paths and cycles.</p>
+
+
+
+<ul class="wp-block-list">
+<li>A cycle is replaced by self-loops. This increases TVD by <code>length * weight</code> and improves the equality probability by <code>length * weight</code>.</li>
+
+
+
+<li>A path is replaced by self-loops on the inner nodes and a shortcut arc from the start to the end. This increases TVD by at most <code>length * weight</code> and improves the equality probability by <code>(length - 1) * weight</code>.</li>
+</ul>
+
+
+
+<p class="wp-block-paragraph">So, the worst case is a length-2 path, where TVD increases by as much as <code>2 * weight</code> and the equality probability increases by only <code>weight</code>.</p>
+
+
+
+<p class="wp-block-paragraph">(Here&#8217;s a brief note on why we know the exact TVD increase for a cycle but for a path it&#8217;s merely upper-bounded. MRC only adds self-loops, never deletes them, so adding a self-loop always adds to TVD. But the path case adds an arc, and that same arc might have been deleted elsewhere, which cancels out, reducing the TVD.)</p>
+
+
+
+<h1 class="wp-block-heading">Assorted facts</h1>
+
+
+
+<p class="wp-block-paragraph">In the other direction, it&#8217;s immediate from the definition of TVD that</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+Phat&#91;&#91;X] = &#91;Y]] - P&#91;&#91;X] = &#91;Y]]
+    &lt;= TVD( (&#91;X],&#91;Y])_P, (&#91;X],&#91;Y])_Phat )
+</pre></div>
+
+
+<p class="wp-block-paragraph">Now here are some facts that we&#8217;ll show with examples:</p>
+
+
+
+<ul class="wp-block-list">
+<li>Both bounds can hold with equality.</li>
+
+
+
+<li>Without MRC, the TVD can be 1 even if the equality probability doesn&#8217;t change.</li>
+</ul>
+
+
+
+<h2 class="wp-block-heading">Example: delta_eq = TVD</h2>
+
+
+
+<p class="wp-block-paragraph">X: uniform over a,b.<br>Y: uniform over a,b.</p>
+
+
+
+<p class="wp-block-paragraph">Original coupling: uniform over (a,b), (b,a).</p>
+
+
+
+<p class="wp-block-paragraph">The unique maximal coupling: uniform over (a,a), (b,b).</p>
+
+
+
+<p class="wp-block-paragraph">The TVD from the original is 1, and delta_eq = 1.</p>
+
+
+
+<h2 class="wp-block-heading">Example: TVD = 2 * delta_eq</h2>
+
+
+
+<p class="wp-block-paragraph">X: uniform over a,c.<br>Y: uniform over a,b.</p>
+
+
+
+<p class="wp-block-paragraph">Original coupling: uniform over (a,b), (c,a).</p>
+
+
+
+<p class="wp-block-paragraph">Unique maximal coupling: uniform over (a,a), (c,b).</p>
+
+
+
+<p class="wp-block-paragraph">The TVD is 1, and delta_eq is 1/2.</p>
+
+
+
+<p class="wp-block-paragraph">(Since the maximal coupling is unique, it&#8217;s the only one that MRC can produce.)</p>
+
+
+
+<h2 class="wp-block-heading">Example without MRC: TVD = 1, delta_eq = 0</h2>
+
+
+
+<p class="wp-block-paragraph">X: constant a.<br>Y: uniform over b,c.</p>
+
+
+
+<p class="wp-block-paragraph">Joint 1: uniform over (a,b), (a,c).<br>Joint 2: uniform over (a,c), (a,b).</p>
+
+
+
+<p class="wp-block-paragraph">TVD is 1, and the equality probability is 0 in both cases, so delta_eq is 0.</p>

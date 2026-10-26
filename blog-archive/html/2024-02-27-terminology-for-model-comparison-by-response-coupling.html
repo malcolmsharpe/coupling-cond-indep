@@ -1,0 +1,34 @@
+
+<p class="wp-block-paragraph">Since my earlier posts describing the technique for model comparison I called &#8220;joint generation&#8221;, I discovered that there is standard terminology and switched to that. Here is the key.</p>
+
+
+
+<ul class="wp-block-list">
+<li>&#8220;Joint generation&#8221; -&gt; &#8220;coupling&#8221;. <em>Coupling</em> is the act of taking two probability distributions and introducing dependence between them.</li>
+
+
+
+<li><em>Optimal transport</em> is the problem of choosing a coupling that optimizes the expected value of some given function of the random variables. (For example, you might want to maximize the probability that the two random variables are equal.)</li>
+
+
+
+<li><em>Total variation distance</em> is half the L1 distance between two probability distributions.</li>
+
+
+
+<li>&#8220;Speculative sampling&#8221; can also be called &#8220;speculative decoding&#8221;. This terminology seems not standardized though.</li>
+</ul>
+
+
+
+<p class="wp-block-paragraph">Speculative decoding implicitly involves optimal transport, and <a href="https://arxiv.org/abs/2310.15141">there is literature on applying it explicitly</a>. My goal is fundamentally different though because speculative decoding is a performance optimization, whereas I&#8217;m interested in:</p>
+
+
+
+<ul class="wp-block-list">
+<li>Evaluation: making it easier for a human to compare two models.</li>
+
+
+
+<li>Synthetic data creation: generating paired data for DPO in which the pairs are similar, hopefully improving data efficiency.</li>
+</ul>

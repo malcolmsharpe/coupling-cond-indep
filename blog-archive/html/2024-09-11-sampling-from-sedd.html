@@ -1,0 +1,120 @@
+
+<p class="wp-block-paragraph">The paper <a href="https://icml.cc/virtual/2024/oral/35554">Discrete Diffusion Modeling by Estimating the Ratios of the Data Distribution (Lou et al. 2024)</a> (<a href="https://masharpe.wordpress.com/2024/09/10/generative-perplexity/">previous discussion</a>) proposes a discrete diffusion alternative to auto-regressive LLMs. In this post, we focus on sampling from a trained SEDD model. Motivating questions:</p>
+
+
+
+<ul class="wp-block-list">
+<li>Can SEDD be used as a draft model for speculative decoding?</li>
+
+
+
+<li>Can two SEDD response distributions be coupled using methods such as all-prefix-optimal coupling (APOC)?</li>
+
+
+
+<li>How fast is SEDD sampling?</li>
+</ul>
+
+
+
+<h1 class="wp-block-heading">Basics of SEDD sampling</h1>
+
+
+
+<p class="wp-block-paragraph">The structure of sampling from SEDD:</p>
+
+
+
+<ol class="wp-block-list">
+<li>Start with a (possibly random) base state (conceptually, it&#8217;s noise).</li>
+
+
+
+<li>Informed by the SEDD model, randomly select a new state.</li>
+
+
+
+<li>Repeat step 2 a pre-determined number of times.</li>
+</ol>
+
+
+
+<p class="wp-block-paragraph">Different base states and transitions are possible, and the paper presents two; we&#8217;ll focus on &#8220;Absorb&#8221;. In Absorb, the base state is a string of d mask tokens (so it is <em>not</em> random), and the transitions change one or more mask tokens to non-mask tokens. Note that the string never changes length, and, once a token has been unmasked, it never changes.</p>
+
+
+
+<h1 class="wp-block-heading">SEDD can&#8217;t be a fully probabilistic draft model</h1>
+
+
+
+<p class="wp-block-paragraph">So, now that we understand the structure of sampling, what are the prospects for SEDD as a draft model in speculative decoding? For non-probabilistic speculative decoding (i.e. temperature zero), all you need is generated text, so of course SEDD can create those drafts. What&#8217;s more interesting is whether SEDD can be used with probabilistic speculative decoding (which is the kind originally proposed).</p>
+
+
+
+<p class="wp-block-paragraph">Probabilistic speculative decoding ordinarily requires auto-regressive next-token probabilities to compute accept probabilities and sample from the residual distribution when necessary. SEDD, being non-auto-regressive, does not provide next-token probabilities. This is already problematic.</p>
+
+
+
+<p class="wp-block-paragraph">What seems fatal for SEDD as a draft model is that it cannot even provide a probability for the draft as a whole. While I am not certain of this (since maybe there is some trick I don&#8217;t know), SEDD certainly can&#8217;t provide probabilities for given text, since that&#8217;s why the paper reports only upper bounds on negative log likelihood (NLL) via evidence lower bound (ELBO), not exact NLLs. I see no reason that SEDD would be able to report a probability for text it generates, either.</p>
+
+
+
+<p class="wp-block-paragraph"><a href="https://arxiv.org/abs/2408.05636">There is a preprint on using SEDD for probabilistic speculative decoding.</a> How they obtain probabilities is explained in the first paragraph of subsection 4.1, but I don&#8217;t understand it. My guess is that they are using the SEDD model to suggest random local perturbations of its generated text. You could perhaps call that semi-probabilistic.</p>
+
+
+
+<h1 class="wp-block-heading">Two SEDD sampling trajectories can be coupled</h1>
+
+
+
+<p class="wp-block-paragraph">You might want to couple two SEDD models for reasons such as: speculative sampling for efficiency; or comparing similar models, prompts, etc. With image diffusion models, using a fixed seed for coupling is common, but it&#8217;s not obvious to me how you would use more advanced coupling methods (but I have very limited knowledge of diffusion models, so I am not confident in this claim).</p>
+
+
+
+<p class="wp-block-paragraph">Since SEDD sampling consists of a series of discrete random decisions, they can be coupled by the usual methods such as fixed seed, per-token optimal coupling (PTOC), and APOC.</p>
+
+
+
+<p class="wp-block-paragraph">There is an additional interesting opportunity with the example dynamics presented in the paper (such as Absorb). They sample the token transition at each index independently. The independence means one step could have all its indexes coupled by <a href="https://masharpe.wordpress.com/2024/07/11/conjecture-non-crossing-family-optimal-coupling/">non-crossing-family-optimal coupling (NCFOC)</a>, if my conjecture is correct that NCFOC is possible for independent random variables.</p>
+
+
+
+<p class="wp-block-paragraph">To then extend the advantage of NCFOC to multiple steps would require some as-yet-unimagined generalization of both APOC and NCFOC.</p>
+
+
+
+<h1 class="wp-block-heading">SEDD sampling is fast if you have enough parallelism</h1>
+
+
+
+<p class="wp-block-paragraph">In Figure 1(a) of the paper, SEDD is shown as achieving better quality than GPT-2 for the same number of network evaluations, but I think there&#8217;s a catch: with GPT-2, each network evaluation only needs to compute the next token, whereas with SEDD, each network evaluation needs to reingest the entire token string. That&#8217;s because tokens can change anywhere in the string (in the two dynamics presented by the paper).</p>
+
+
+
+<p class="wp-block-paragraph">So each SEDD network evaluation requires much more parallelism than each GPT-2 network evaluation. If you have the parallelism available, that doesn&#8217;t add any latency. If you don&#8217;t, though, then latency per network evaluation will increase.</p>
+
+
+
+<p class="wp-block-paragraph">Another catch about SEDD&#8217;s performance is that unmasking several tokens independently simultaneously seems risky. What if they aren&#8217;t compatible? But if you only unmask one token at a time, you need as many network evaluations as GPT-2.</p>
+
+
+
+<h1 class="wp-block-heading">Conclusion</h1>
+
+
+
+<ul class="wp-block-list">
+<li>SEDD sampling consists of a series of random discrete decisions, modifying a token string.</li>
+
+
+
+<li>SEDD sampling does not produce probabilities, so it is not usable for fully probabilistic speculative decoding.</li>
+
+
+
+<li>SEDD sampling can be coupled by fixed seed, PTOC, APOC, and perhaps more advanced methods.</li>
+
+
+
+<li>Getting good sampling latency from SEDD requires plenty of parallelism.</li>
+</ul>

@@ -1,0 +1,191 @@
+
+<p class="wp-block-paragraph">Following on <a href="https://masharpe.wordpress.com/2024/10/15/towards-proving-detailed-effect-on-subcouplings/">from yesterday&#8217;s post towards proving the detailed effect of maximal recoupling on subcouplings</a>, today I sketched proofs of all the necessary lemmas in the irreducible case.</p>
+
+
+
+<p class="wp-block-paragraph">First a note about irreducibility, then the proof sketches.</p>
+
+
+
+<h1 class="wp-block-heading">Irreducibility</h1>
+
+
+
+<p class="wp-block-paragraph">We&#8217;ll justify our use of the terminology &#8220;irreducible&#8221; by connecting to Markov chains. We&#8217;ve seen before that a joint distribution P can be transformed to a Markov chain by adding an auxiliary node that feeds the source and receives from the sinks.</p>
+
+
+
+<p class="wp-block-paragraph"><strong>Claim.</strong> P is irreducible if and only if its corresponding Markov chain is irreducible.</p>
+
+
+
+<p class="wp-block-paragraph"><strong>Proof sketch.</strong> P being irreducible means every node has a path to a sink, which is equivalent to every node having a path from a source, which together are equivalent to, in the Markov chain, the auxiliary node having a path to and from every node. <strong>[]</strong></p>
+
+
+
+<p class="wp-block-paragraph">(Admittedly, more ought to be said about why a node having a path to a sink means it has a path from a source, and vice versa. It&#8217;s straightforward network flow stuff.)</p>
+
+
+
+<h1 class="wp-block-heading">Lemma proof sketches</h1>
+
+
+
+<p class="wp-block-paragraph">For conciseness, we&#8217;ll often write <code>P(x,y)</code> to mean <code>P_{XY}(x,y)</code>. When either input is a set, the meaning is to sum over that set.</p>
+
+
+
+<p class="wp-block-paragraph">Recall that, for irreducible P, the lemma from the last post said:</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+P = E_t&#91;g_old(t)]
+Phat = e_t&#91;g_new(t)]
+</pre></div>
+
+
+<p class="wp-block-paragraph">where</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+g_old(t) = sum_{i=1}^l e_{x_{i-1} x_i}
+g_new(t) = sum_{i=1}^{l-1} e_{x_i x_i} + e_{x_0 x_l}
+</pre></div>
+
+
+<p class="wp-block-paragraph">We&#8217;ll first analyze the self-loops, showing that they do not lose flow.</p>
+
+
+
+<p class="wp-block-paragraph"><strong>Lemma (effect on subcoupling self-loops).</strong> Assume P is irreducible. Take <code>S subseteq E</code>. Then</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+Phat(S,S) &gt;= P(S,S)
+</pre></div>
+
+
+<p class="wp-block-paragraph"><strong>Proof sketch.</strong> Observe</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+Phat(S,S) + Phat(S,E\S) = P_X(S)
+P(S,S) + P(S,E\S) = P_X(S)
+</pre></div>
+
+
+<p class="wp-block-paragraph">So</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+Phat(S,S) - P(S,S) = P(S,E\S) - Phat(S,E\S)
+</pre></div>
+
+
+<p class="wp-block-paragraph">We must prove this is non-negative.</p>
+
+
+
+<p class="wp-block-paragraph">Using the lemma from last post,</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+P(S,E\S) - Phat(S,E\S)
+    = E_t&#91;g_old(t)(S,E\S) - g_new(t)(S,E\S)]
+</pre></div>
+
+
+<p class="wp-block-paragraph">Consider the value inside the expectation for a trajectory <code>t = x_0, ..., x_l</code>. We will seek to prove that it is always non-negative. Since <code>S</code> and <code>E\S</code> are disjoint, then unless <code>x_0 in S</code> and <code>x_l not in S</code>, <code>g_new(t)(S,E\S) = 0</code> and the value is non-negative.</p>
+
+
+
+<p class="wp-block-paragraph">So assume <code>x0 in S</code> and <code>x_l not in S</code>. Then <code>g_new(t)(S,E\S) = 1</code>, and there exists <code>1 &lt;= i &lt;= l</code> such that <code>x_{i-1} in S</code> and <code>x_i not in S</code>. So</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+g_old(t)(S,E\S) &gt;= g_old(t)_{x_{i-1} x_i} = 1
+=&gt; g_old(t)(S,E\S) - g_new(t)(S,E\S) &gt;= 1 - 1 = 0.
+</pre></div>
+
+
+<p class="wp-block-paragraph">So the expectation is over non-negative values and is thus itself non-negative, completing the proof. <strong>[]</strong></p>
+
+
+
+<p class="wp-block-paragraph">The above lemma is already enough to prove that maximal subcouplings remain maximal, which is enough for the applications SMC-I and SMC-BN, but it&#8217;s not the most powerful result possible, so we forge onwards to prove that any increased flow on non-self arcs is compensated for by an improvement in cost.</p>
+
+
+
+<p class="wp-block-paragraph"><strong>Lemma (effect on subcoupling non-self arcs).</strong> Assume P is irreducible. Let F be a partition of E. Then</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+sum_{distinct S,T in F} (P(S,T) - Phat(S,T)) &gt;= sum_{distinct S,T in F} max{0, Phat(S,T) - P(S,T)}
+</pre></div>
+
+
+<p class="wp-block-paragraph"><strong>Proof sketch.</strong> We&#8217;ll use a claim.</p>
+
+
+
+<p class="wp-block-paragraph"><strong>Claim.</strong> For every trajectory t,</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+sum_{distinct S,T in F} (g_old(t)(S,T) - g_new(t)(S,T)) &gt;= sum_{distinct S,T in F} max{0, g_new(t)(S,T) - g_old(t)(S,T)}
+</pre></div>
+
+
+<p class="wp-block-paragraph">Once we have the claim, we can finish the proof by</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+sum_{distinct S,T in F} ( P(S,T) - Phat(S,T) )
+= sum_{distinct S,T in F} ( E_t&#91;g_old(t)(S,T)] - E_t&#91;g_new(t)(S,T)] )
+= E_t&#91; sum_{distinct S,T in F} ( g_old(t)(S,T) - g_new(t)(S,T) ) ]
+&gt;= E_t&#91; sum_{distinct S,T in F} max{0, g_new(t)(S,T) - g_old(t)(S,T)} ]    by claim
+= sum_{distinct S,T in F} E_t&#91; max{0, g_new(t)(S,T) - g_old(t)(S,T)} ]
+&gt;= sum_{distinct S,T in F} max{0, E_t&#91;g_new(t)(S,T) - g_old(t)(S,T)]}    by Jensen's inequality
+= sum_{distinct S,T in F} max{0, Phat(S,T) - P(S,T)}
+</pre></div>
+
+
+<p class="wp-block-paragraph"><strong>Claim proof sketch.</strong> Take a trajectory t. If <code>g_new(t)(S,T) &lt;= g_old(t)(S,T)</code> for all <code>distinct S,T in F</code>, done.</p>
+
+
+
+<p class="wp-block-paragraph">So assume there exists <code>distinct S0,T0 in F</code> such that <code>g_new(t)(S0,T0) &gt; g_old(t)(S0,T0)</code>. By the definitions, this means:</p>
+
+
+
+<ul class="wp-block-list">
+<li><code>g_new(t)(S0,T0) = 1</code> and <code>g_old(t)(S0,T0) = 0</code></li>
+
+
+
+<li><code>x_0 in S_0</code> and <code>x_l in T_0</code></li>
+
+
+
+<li>For all <code>1 &lt;= i &lt;= l</code>, either <code>x_{i-1} not in S0</code> or <code>x_i not in T0</code>.</li>
+</ul>
+
+
+
+<p class="wp-block-paragraph">Let <code>1 &lt;= i &lt;= l-1</code> be the first such that <code>x_i not in S0</code> and let <code>2 &lt;= j &lt;= l</code> be the last such that <code>x_{j-1} not in T0</code>.</p>
+
+
+
+<p class="wp-block-paragraph">Then <code>x_{i-1} in S0</code> and <code>x_j in T0</code>, which shows <code>i != j</code>. So</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+sum_{distinct S,T in F} ( g_old(t)(S,T) - g_new(t)(S,T) )
+&gt;= sum_{distinct S,T in F} ( (e_{x_{i-1} x_i} + e_{x_{j-1} x_j})(S,T) - g_new(t)(S,T) )
+= 1 + 1 - 1
+= 1
+= sum_{distinct S,T in F} max{0, g_new(t)(S,T) - g_old(t)(S,T)}
+</pre></div>
+
+
+<p class="wp-block-paragraph">which proves the claim, completing the proof. <strong>[]</strong></p>

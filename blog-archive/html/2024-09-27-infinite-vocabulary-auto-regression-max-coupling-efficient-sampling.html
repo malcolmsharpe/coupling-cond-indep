@@ -1,0 +1,275 @@
+
+<p class="wp-block-paragraph">In <a href="https://masharpe.wordpress.com/2024/09/25/efficient-sampling-when-extending-a-maximal-coupling-by-one-auto-regressive-random-variable/">my previous post</a>, I presented an algorithm to sample from a maximal coupling of X and Y while preserving a given maximal coupling of X1 and Y1. However, that algorithm only applies when the range of X2 and Y2 is finite. What if instead the range of X2 and Y2 is infinite, either because their distributions are discrete over a countably infinite set, or because their distributions are continuous? Then we need the algorithm in this post.</p>
+
+
+
+<p class="wp-block-paragraph">We&#8217;ll see the sampling algorithm and calculate upper bounds on how many samples it draws from the given distributions. We need to be given the ability to sample from and evaluate likelihoods for the following distributions: X1,Y1; X2|X1; Y2|Y1. (Note that the ability to evaluate likelihoods is critical, which unfortunately means this algorithm can&#8217;t be used with distributions arising from diffusion models.)</p>
+
+
+
+<p class="wp-block-paragraph"><strong>Algorithm.</strong></p>
+
+
+
+<ol class="wp-block-list">
+<li>Sample <code>(a1, b1)</code> with probability <code>P[X1 = a1, Y1 = b1]</code>.</li>
+
+
+
+<li>If <code>a1 = b1</code>:
+<ol class="wp-block-list">
+<li>If <code>P[X1 = a1] &lt;= P[Y1 = a1]</code>:
+<ol class="wp-block-list">
+<li>Sample a2 with probability <code>P[X2 = a2 | X1 = a1]</code>.</li>
+
+
+
+<li>With probability <code>min{1, P[Y=a]/P[X=a]}</code>, set b2 = a2.</li>
+
+
+
+<li>Otherwise, sample b2 with weight <code>max{0, P[Y = b] - P[X = b]}</code>.</li>
+</ol>
+</li>
+
+
+
+<li>Else (i.e. <code>P[Y1 = a1] &lt; P[X1 = a1]</code>): similar.</li>
+</ol>
+</li>
+
+
+
+<li>Else (i.e. <code>a1 != b1</code>):
+<ol class="wp-block-list">
+<li>Sample a2 with weight <code>max{0, P[X = a] - P[Y = a]}</code>.</li>
+
+
+
+<li>Sample b2 with weight <code>max{0, P[Y = b] - P[X = b]}</code>.</li>
+</ol>
+</li>
+
+
+
+<li>Return X=a and Y=b.</li>
+</ol>
+
+
+
+<p class="wp-block-paragraph">In four steps of this algorithm, we performed sampling of the form: sample a2 with weight <code>max{0, P[X=a] - P[Y=a]}</code>. Each of these sampling steps uses basic rejection sampling:</p>
+
+
+
+<p class="wp-block-paragraph"><strong>Algorithm (rejection).</strong></p>
+
+
+
+<ol class="wp-block-list">
+<li>Sample a2 with probability <code>P[X2=a2 | X1=a1]</code>.</li>
+
+
+
+<li>With probability <code>min{1, P[Y=a]/P[X=a]}</code>, reject and go to step 1.</li>
+
+
+
+<li>Otherwise, return X2=a2.</li>
+</ol>
+
+
+
+<h1 class="wp-block-heading">Efficiency</h1>
+
+
+
+<p class="wp-block-paragraph">Now, let&#8217;s analyze the efficiency of the algorithm. (We&#8217;ll leave the correctness proof for future posts.) We&#8217;ll just analyze how many samples we draw from the given conditional distributions X2|X1 and Y2|Y1. All the steps in the algorithm that do so:</p>
+
+
+
+<ul class="wp-block-list">
+<li>Non-residual a2 (2.1.1).</li>
+
+
+
+<li>Equal mode, residual b2 (2.1.3).</li>
+
+
+
+<li>Non-residual b2 (2.2.1).</li>
+
+
+
+<li>Equal mode, residual a2 (2.2.3).</li>
+
+
+
+<li>Split mode, residual a2 (3.1).</li>
+
+
+
+<li>Split mode, residual b2 (3.2).</li>
+</ul>
+
+
+
+<p class="wp-block-paragraph">Since these come in similar pairs, we only need to analyze three cases: non-residual, equal-mode residual, and split-mode residual.</p>
+
+
+
+<h2 class="wp-block-heading">Non-residual</h2>
+
+
+
+<p class="wp-block-paragraph">For non-residual a2, the expected number of samples is</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+sum_{a1 s.t. P&#91;X1=a1] &lt;= P&#91;Y1=a1]} P&#91;X1=a1]
+</pre></div>
+
+
+<p class="wp-block-paragraph">Summing together with the similar formula for non-residual b2, the expected number of non-residual samplings is:</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+&lt;= sum_{a1} min{P&#91;X=a1], P&#91;Y1=a1]} = 1 - TVD(X1, Y1)
+</pre></div>
+
+
+<h2 class="wp-block-heading">Rejection algorithm</h2>
+
+
+
+<p class="wp-block-paragraph">For the other two cases, we&#8217;ll need to know the number of samples used by the rejection algorithm. As always with basic rejection sampling, this is is given by the reciprocal acceptance probability, and comes out to, for a2,</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+P&#91;X1=a1] / sum_a2 max{0, P&#91;X=a] - P&#91;Y=a]}
+</pre></div>
+
+
+<h2 class="wp-block-heading">Equal-mode residual</h2>
+
+
+
+<p class="wp-block-paragraph">Consider equal-mode residual b2, so <code>P[X1 = a1] &lt;= P[Y1 = a1]</code>.</p>
+
+
+
+<p class="wp-block-paragraph">We first show that Y has more total residual than X:</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+sum_{a2}( max{0, P&#91;X=a] - P&#91;Y=a]} + min{P&#91;X=a], P&#91;Y=a]} )
+    = sum_{a2} P&#91;X=a]
+    = P&#91;X1=a1]
+    &lt;= P&#91;Y1=a1]
+    = sum_{a2} P&#91;Y=a]
+    = sum_{a2}( max{0, P&#91;Y=a] - P&#91;X=a]} + min{P&#91;X=a], P&#91;Y=a]} )
+
+=&gt; sum_{a2} max{0, P&#91;X=a] - P&#91;Y=a]} &lt;= sum_{a2} max{0, P&#91;Y=a] - P&#91;X=a]}
+</pre></div>
+
+
+<ul class="wp-block-list">
+<li>Probability of sampling <code>a1</code> and being in the case <code>a1 = b1</code>: <code>P[X1 = a1]</code>.</li>
+
+
+
+<li>Conditional on the previous, the probability of &#8220;set b2 = a2&#8221;:</li>
+</ul>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+sum_{a2} P&#91;X2=a2 | X1=a1] min{1, P&#91;Y=a]/P&#91;X=a]}
+    = P&#91;X1=a1]^{-1} sum_{a2} min{P&#91;X=a], P&#91;Y=a]}
+</pre></div>
+
+
+<ul class="wp-block-list">
+<li>Conditional on two points previous, the expected number of samples for b2:</li>
+</ul>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+(1 - P&#91;X1=a1]^{-1} sum_{a2} min{P&#91;X=a], P&#91;Y=a]}) (P&#91;Y1=a1] / sum_{a2} max{0, P&#91;Y=a] - P&#91;X=a]})
+    = P&#91;X1=a1]^{-1} sum_{a2} max{0, P&#91;X=a] - P&#91;Y=a]} (P&#91;Y1=a1] / sum_{a2} max{0, P&#91;Y=a] - P&#91;X=a]})
+    &lt;= P&#91;X1=a1}^{-1} P&#91;Y1=a1]
+</pre></div>
+
+
+<p class="wp-block-paragraph">So the (unconditional) expected number of samples is:</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+&lt;= P&#91;X1=a1] P&#91;X1=a1]^{-1} P&#91;Y1=a1]
+    = P&#91;Y1=a1]
+</pre></div>
+
+
+<p class="wp-block-paragraph">By summing over the possibilites for a1, as well as summing with equal-mode residual a2, we get</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+&lt;= sum_{a1} max{ P&#91;X1=a1], P&#91;Y1=a1] } = 1 + TVD(X1, Y1)
+</pre></div>
+
+
+<h2 class="wp-block-heading">Split-mode residual</h2>
+
+
+
+<p class="wp-block-paragraph">Consider split-mode residual a2, so <code>P[X1 = a1] &gt; P[Y1 = a1]</code>.</p>
+
+
+
+<p class="wp-block-paragraph">We&#8217;ll need the fact that</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+sum_{a2} max{0, P&#91;X=a] - P&#91;Y=a]}
+    &gt;= P&#91;X1=a1] - P&#91;Y1=a1]
+</pre></div>
+
+
+<p class="wp-block-paragraph">So, in the whole algorithm, the expected number of samplings of a2 in the split-mode residual case is:</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+sum_{a1 s.t. P&#91;X1=a1] &gt; P&#91;Y1=a1]} (P&#91;X1=a1] - P&#91;Y1=a1]) (P&#91;X1=a1] / sum_{a2} max{0, P&#91;X=a] - P&#91;Y=a]})
+    &lt;= sum_{a1 s.t. P&#91;X1=a1] &gt; P&#91;Y1=a1]} P&#91;X1=a1]
+</pre></div>
+
+
+<p class="wp-block-paragraph">So, together with b2, we get</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+&lt;= sum_a1} max{P&#91;X1=a1], P&#91;Y1=a1]} = 1 + TVD(X1, Y1)
+</pre></div>
+
+
+<h2 class="wp-block-heading">Total</h2>
+
+
+
+<p class="wp-block-paragraph">We got the following upper bounds:</p>
+
+
+
+<ul class="wp-block-list">
+<li>Non-residual: <code>1 - TVD(X1, Y1)</code></li>
+
+
+
+<li>Equal-mode residual: <code>1 + TVD(X1, Y1)</code></li>
+
+
+
+<li>Split-mode residual: <code>1 + TVD(X1, Y1)</code></li>
+</ul>
+
+
+
+<p class="wp-block-paragraph">This totals to <code>3 + TVD(X1, Y1) &lt;= 4</code>. (I suspect a tighter bound is possible, but in any case it is a small constant.)</p>

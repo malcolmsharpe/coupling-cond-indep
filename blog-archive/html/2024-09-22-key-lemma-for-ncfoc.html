@@ -1,0 +1,137 @@
+
+<p class="wp-block-paragraph">I&#8217;ve now found a proof for the critical lemma that allows proving the NCFOC conjecture, and, by use of another easier lemma derived from APOC, <a href="https://masharpe.wordpress.com/2024/09/19/conjecture-the-broadest-generalization-of-apoc-and-ncfoc/">the conjecture for simultaneously maximal coupling of Bayesian networks (SMCBN)</a>. This post contains a draft of the proof.</p>
+
+
+
+<p class="wp-block-paragraph">This lemma is the only novel cleverness needed to prove NCFOC and SMCBN. Everything else is either an easy variation of known results or easy induction. The lemma proof itself is not too hard&#8211;the main hard part was realizing what the lemma statement should be.</p>
+
+
+
+<p class="wp-block-paragraph"><strong>Lemma (exchange).</strong> Assume X1, X2, Y1, Y2 are RVs such that X1 and Y1 are maximally coupled and X2 and Y2 are maximally coupled. Then there exists a maximum coupling P* of X = (X1, X2) and Y = (Y1, Y2) that preserves the marginal distributions of (X1, Y1) and (X2, Y2). i.e.</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+P*&#91;X = Y = a] = min{ P*&#91;X=a], P*&#91;Y=a] } forall a
+P*&#91;X=a] = P&#91;X=a] forall a
+P*&#91;Y=a] = P&#91;Y=a] forall a
+P*&#91;X1 = a /\ Y1 = b] = P&#91;X1 = a /\ Y1 = b] forall a,b
+P*&#91;X2 = a /\ Y2 = b] = P&#91;X2 = a /\ Y2 = b] forall a,b
+</pre></div>
+
+
+<p class="wp-block-paragraph">For the proof, we&#8217;ll need a certain proposition about maximal couplings:</p>
+
+
+
+<p class="wp-block-paragraph"><strong>Proposition.</strong> Assume X and Y are RVs over the same finite set Sigma. Then X and Y are maximally coupled if and only if, for every a,b,c in Sigma with b != a and c != a, we have at least one of <code>P[X=a /\ Y=b] = 0</code> or <code>P[X=c /\ Y=a] &gt; 0</code>.</p>
+
+
+
+<p class="wp-block-paragraph">The proof idea for this proposition is that, in a maximal coupling, only one of X and Y can have spare probability for a.</p>
+
+
+
+<p class="wp-block-paragraph"><strong>Proof of lemma.</strong> Let <code>phat(x1, x2, y1, y2)</code> be the given joint distribution. Consider the linear program whose feasible solutions are the marginal-preserving joints and whose objective is the probability of X=Y:</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+max sum_a p(a1, a2, a1, a2)
+s.t.
+    sum_b p(a1, a2, b1, b2) = sum_b phat(a1, a2, b1, b2) forall a
+    sum_b p(b1, b2, a1, a2) = sum_b phat(b1, b2, a1, a2) forall a
+    sum_{a2,b2} p(a1, a2, b1, b2) = sum_{a2,b2} phat(a1, a2, b1, b2) forall b1,a1
+    sum_{a1,b1} p(a1, a2, b1, b2) = sum_(a1,b1) phat(a1, a2, b1, b2) forall b2,a2
+    1^T p = 1
+    p &gt;= 0
+</pre></div>
+
+
+<p class="wp-block-paragraph">Observe that:</p>
+
+
+
+<ul class="wp-block-list">
+<li>phat is a feasible solution</li>
+
+
+
+<li>All feasible solutions are probability vectors, so the LP is bounded.</li>
+</ul>
+
+
+
+<p class="wp-block-paragraph">Since the LP is feasible and bounded, it has an optimal solution <code>p*</code>. It&#8217;s enough to prove that <code>p*</code> is a maximal coupling of X and Y, since the LP constraints ensure that the marginal preservation conditions hold.</p>
+
+
+
+<p class="wp-block-paragraph">For notation, let <code>P*[X = a /\ Y = b] = p*(a1, a2, b1, b2)</code> forall a,b.</p>
+
+
+
+<p class="wp-block-paragraph">Suppose <code>p*</code> is not maximal. Then, by the Proposition, there exist a,b,c,d,e,f with (c,d) != (a,b) and (e,f) != (a,b) such that</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+  1 2             1 2
+X a b    and    X e f
+Y c d           Y a b
+</pre></div>
+
+
+<p class="wp-block-paragraph">both have positive probability.</p>
+
+
+
+<p class="wp-block-paragraph">So either a != c or b != d; without loss of generality, a != c. Since X1 and Y1 are maximally coupled and both <code>P*[X1 = a /\ Y1 = c] &gt; 0</code> and <code>P*[X1 = e /\ Y1 = a] &gt; 0</code>, we have a = e (by the Proposition).</p>
+
+
+
+<p class="wp-block-paragraph">Then, since (e,f) != (a,b), we have b != f. Since X2 and Y2 are maximally coupled and both <code>P*[X2 = b /\ Y2 = d] &gt; 0</code> and <code>P[X2 = f /\ Y2 = b] &gt; 0</code>, we have b = d.</p>
+
+
+
+<p class="wp-block-paragraph">Taken together, we found positive probability for</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+  1 2             1 2
+X a b    and    X a f
+Y c b           Y a b
+</pre></div>
+
+
+<p class="wp-block-paragraph">Let <code>delta = min{ p*(a,b,c,b), p*(a,f,a,b) } &gt; 0</code> be the minimum probability of these two configurations. We will move delta probability mass to</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+  1 2             1 2
+X a b    and    X a f
+Y a b           Y c b
+</pre></div>
+
+
+<p class="wp-block-paragraph">i.e. Let</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+ptilde = p* + delta ( evec(a,b,a,b) + evec(a,f,c,b) - evec(a,b,c,b) - evec(a,f,a,b) )
+</pre></div>
+
+
+<p class="wp-block-paragraph">Then the change to the marginals is</p>
+
+
+<div class="wp-block-syntaxhighlighter-code "><pre class="brush: plain; title: ; notranslate" title="">
+RVs      decreased by delta    increased by delta
+X1,X2    ab, af                ab, af
+Y1,Y2    cb, ab                ab, cb
+X1,Y1    ac, aa                aa, ac
+X2,Y2    bb, fb                bb, fb
+</pre></div>
+
+
+<p class="wp-block-paragraph">The decreases and increases balance, so ptilde is feasible for the LP.</p>
+
+
+
+<p class="wp-block-paragraph">Also, the objective increased by delta, i.e. <code>LPobj(ptilde) = delta + LPobj(p*)</code>, which contradicts optimality of <code>p*</code>. <strong>[]</strong></p>
